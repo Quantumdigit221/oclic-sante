@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login O'CLIC SANTE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-md mx-auto">
+        <h1 class="text-2xl font-bold text-blue-600 mb-8">🏥 Test Login O'CLIC SANTE</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="email" value="admin@sante.quantum221.com" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+                    <input type="password" id="password" value="admin123" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <button type="submit" 
+                        class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
+                    Se connecter
+                </button>
+            </form>
+            
+            <div id="result" class="mt-4 p-4 rounded-lg"></div>
+            
+            <div class="mt-4">
+                <button onclick="testAPI()" 
+                        class="w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
+                    Tester API Direct
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.className = 'mt-4 p-4 rounded-lg bg-yellow-100 text-yellow-800';
+            resultDiv.innerHTML = 'Connexion en cours...';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'mt-4 p-4 rounded-lg bg-green-100 text-green-800';
+                    resultDiv.innerHTML = `
+                        <h3 class="font-bold mb-2">✅ Connexion réussie!</h3>
+                        <p><strong>Email:</strong> ${data.user.email}</p>
+                        <p><strong>Rôle:</strong> ${data.user.role}</p>
+                        <p><strong>Token:</strong> ${data.token.substring(0, 50)}...</p>
+                    `;
+                    
+                    // Stocker le token
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Rediriger vers la page des tickets après 2 secondes
+                    setTimeout(() => {
+                        window.location.href = '/#/tickets';
+                    }, 2000);
+                    
+                } else {
+                    resultDiv.className = 'mt-4 p-4 rounded-lg bg-red-100 text-red-800';
+                    resultDiv.innerHTML = `
+                        <h3 class="font-bold mb-2">❌ Échec de connexion</h3>
+                        <p>${data.message}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'mt-4 p-4 rounded-lg bg-red-100 text-red-800';
+                resultDiv.innerHTML = `
+                    <h3 class="font-bold mb-2">❌ Erreur réseau</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'mt-4 p-4 rounded-lg bg-yellow-100 text-yellow-800';
+            resultDiv.innerHTML = 'Test API en cours...';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        email: 'admin@sante.quantum221.com', 
+                        password: 'admin123' 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'mt-4 p-4 rounded-lg bg-green-100 text-green-800';
+                    resultDiv.innerHTML = `
+                        <h3 class="font-bold mb-2">✅ API Test réussi!</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Message:</strong> ${data.message}</p>
+                        <p><strong>User:</strong> ${data.user.name}</p>
+                    `;
+                } else {
+                    resultDiv.className = 'mt-4 p-4 rounded-lg bg-red-100 text-red-800';
+                    resultDiv.innerHTML = `
+                        <h3 class="font-bold mb-2">❌ API Test échoué</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Erreur:</strong> ${data.message}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'mt-4 p-4 rounded-lg bg-red-100 text-red-800';
+                resultDiv.innerHTML = `
+                    <h3 class="font-bold mb-2">❌ Erreur API</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
