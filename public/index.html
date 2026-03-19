@@ -8,19 +8,34 @@
   <meta name="keywords" content="santé, médical, gestion, cabinet, clinique, o' clic santé" />
   <title>O'CLIC SANTE - Plateforme de Santé</title>
 
-  <!-- Patch ultra-minimal pour corriger l'erreur filter -->
-  <script src="/ultra-minimal-patch.js"></script>
-  
+  <!-- React Application Assets -->
   <script type="module" crossorigin src="/assets/index-Cg4yQY5E.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/vendor-DPOtbovq.js">
   <link rel="modulepreload" crossorigin href="/assets/router-B20A3YI1.js">
   <link rel="modulepreload" crossorigin href="/assets/heavy-DzHJSI6Z.js">
   <link rel="modulepreload" crossorigin href="/assets/ui-CBXw7PH5.js">
   <link rel="stylesheet" crossorigin href="/assets/index-DhUZ00cH.css">
+
+  <!-- Legacy Printing Script (Loads in background to handle print calls if needed) -->
+  <!-- <script src="/original-interface-fixed.js"></script> -->
+
+  <style>
+    /* Global styles to ensure React mounts correctly */
+    body { margin: 0; padding: 0; min-height: 100vh; background-color: #f8fafc; }
+    #root { height: 100%; min-height: 100vh; }
+  </style>
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <!-- Loading State -->
+    <div style="height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; color: #64748b;">
+      <div style="text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 20px;">🏥</div>
+        <p>Chargement de O'CLIC SANTE...</p>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

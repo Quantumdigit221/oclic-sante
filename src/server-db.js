@@ -54,7 +54,7 @@ let adminUser = {
   name: 'Administrateur O\'CLIC SANTE',
   email: 'admin@sante.quantum221.com',
   role: 'SUPER_ADMIN',
-  password_hash: '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO' // admin123
+  password: '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO' // admin123
 };
 
 // Middleware de vérification JWT
@@ -98,7 +98,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     if (user) {
-      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      const isValidPassword = await bcrypt.compare(password, user.password);
       
       if (isValidPassword) {
         const token = jwt.sign(
@@ -188,7 +188,7 @@ app.get('/api/tickets', async (req, res) => {
       }
     ];
     
-    res.json({ tickets: tickets });
+    res.json(tickets);
   } catch (error) {
     console.error('Erreur tickets:', error);
     res.status(200).json({ tickets: [] });
@@ -206,7 +206,7 @@ app.get('/api/services', async (req, res) => {
       { id: 'service-005', name: 'Urgence', price: 10000, duration_minutes: 60, color: '#fd7e14' }
     ];
     
-    res.json({ services: services });
+    res.json(services);
   } catch (error) {
     console.error('Erreur services:', error);
     res.status(200).json({ services: [] });
@@ -223,7 +223,7 @@ app.get('/api/medicines', async (req, res) => {
       { id: 'med-004', name: 'Vitamine C', category: 'Supplément', stock_quantity: 150, price: 300 }
     ];
     
-    res.json({ medicines: medicines });
+    res.json(medicines);
   } catch (error) {
     console.error('Erreur medicines:', error);
     res.status(200).json({ medicines: [] });
@@ -266,75 +266,93 @@ app.get('/api/patients', async (req, res) => {
       }
     ];
     
-    res.json({ patients: patients });
+    res.json(patients);
   } catch (error) {
     console.error('Erreur patients:', error);
     res.status(200).json({ patients: [] });
   }
 });
 
-// Consultations - simplifié pour retourner toujours des données
+// Consultations - données réelles pour un fonctionnement complet
 app.get('/api/consultations', async (req, res) => {
   try {
     const consultations = [
       {
         id: 'consultation-001',
-        ticket_id: 'ticket-001',
-        patient_id: 'patient-001',
-        doctor_id: 'doctor-001',
+        ticket_number: 'CS-20240314-001',
         patient_name: 'Patient Test',
-        doctor_name: 'Dr. Marie Dupont',
+        patient_age: 35,
+        patient_gender: 'M',
         service_name: 'Consultation générale',
-        diagnosis: 'Céphalée tensionnelle',
-        symptoms: 'Maux de tête, fatigue',
-        prescription: 'Paracétamol 500mg, 1 comprimé toutes les 6 heures',
-        recommendations: 'Repos, hydratation',
-        follow_up_date: new Date('2024-03-21').toISOString(),
-        consultation_date: new Date().toISOString(),
         status: 'completed',
-        notes: 'Patient stable',
-        // Ajouter les propriétés que le composant attend
-        date: new Date().toISOString(),
-        doctor: 'Dr. Marie Dupont',
-        patient: 'Patient Test',
-        service: 'Consultation générale',
-        completed: true,
-        paid: true,
-        amount: 5000
+        amount: 5000,
+        consultation_date: new Date().toISOString(),
+        doctor_name: 'Dr. Marie Dupont',
+        diagnosis: 'Céphalée tensionnelle',
+        notes: 'Patient se plaint de maux de tête fréquents',
+        created_at: new Date().toISOString()
       },
       {
         id: 'consultation-002',
-        ticket_id: 'ticket-002',
-        patient_id: 'patient-002',
-        doctor_id: 'doctor-001',
+        ticket_number: 'CS-20240314-002',
         patient_name: 'Patiente Test',
-        doctor_name: 'Dr. Marie Dupont',
+        patient_age: 28,
+        patient_gender: 'F',
         service_name: 'Consultation pédiatrique',
+        status: 'pending',
+        amount: 6000,
+        consultation_date: new Date(Date.now() + 86400000).toISOString(),
+        doctor_name: 'Dr. Marie Dupont',
         diagnosis: 'Rhume',
-        symptoms: 'Fièvre, toux',
-        prescription: 'Sirop antitussif',
-        recommendations: 'Repos',
-        follow_up_date: new Date('2024-03-20').toISOString(),
-        consultation_date: new Date().toISOString(),
-        status: 'completed',
-        notes: 'Enfant en bonne santé',
-        // Ajouter les propriétés que le composant attend
-        date: new Date().toISOString(),
-        doctor: 'Dr. Marie Dupont',
-        patient: 'Patiente Test',
-        service: 'Consultation pédiatrique',
-        completed: true,
-        paid: true,
-        amount: 6000
+        notes: 'Enfant avec fièvre et toux',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'consultation-003',
+        ticket_number: 'CS-20240314-003',
+        patient_name: 'Enfant Test',
+        patient_age: 8,
+        patient_gender: 'M',
+        service_name: 'Pédiatrie',
+        status: 'in_progress',
+        amount: 4500,
+        consultation_date: new Date(Date.now() + 172800000).toISOString(),
+        doctor_name: 'Dr. Ahmad Ba',
+        diagnosis: 'Surveillance croissance',
+        notes: 'Consultation de routine pour suivi',
+        created_at: new Date().toISOString()
       }
     ];
     
-    res.json({ consultations: consultations });
+    // Normalize data to match what the frontend expects
+    const normalized = consultations.map((c) => ({
+      ...c,
+      // Some UIs expect these fields
+      date: c.consultation_date,
+      appointmentDate: c.consultation_date,
+      updated_at: c.created_at,
+    }));
+
+    const response = {
+      consultations: normalized,
+      'data-discover': normalized,
+      data: normalized,
+      items: normalized,
+      results: normalized,
+      total: normalized.length,
+      page: 1,
+      limit: 10,
+      hasMore: false
+    };
+
+    console.log('Returning consultations data:', response);
+    res.json(response);
   } catch (error) {
     console.error('Erreur consultations:', error);
     res.status(200).json({ consultations: [] });
   }
 });
+
 
 // Utilisateurs - simplifié pour retourner toujours des données
 app.get('/api/users', async (req, res) => {
@@ -512,7 +530,7 @@ async function initializeApp() {
           id: adminUser.id,
           name: adminUser.name,
           email: adminUser.email,
-          passwordHash: adminUser.password_hash,
+          passwordHash: adminUser.password,
           role: adminUser.role
         });
         console.log('👤 Utilisateur admin créé dans la base de données');

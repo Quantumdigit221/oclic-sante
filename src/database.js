@@ -31,17 +31,108 @@ export async function initializeDatabase() {
     pool = mysql.createPool(dbConfig);
     
     // Tester la connexion
-    const connection = await pool.getConnection();
+    const [rows] = await pool.query('SELECT 1 + 1 AS solution');
     console.log('✅ Base de données connectée avec succès');
-    console.log(`📊 Base: ${dbConfig.database}`);
-    console.log(`🌐 Hôte: ${dbConfig.host}:${dbConfig.port}`);
     
-    connection.release();
+    // Créer les tables si elles n'existent pas
+    console.log('🏗️ Création/Vérification des tables...');
     
+    await query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'USER',
+        specialty VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS tickets (
+        id VARCHAR(255) PRIMARY KEY,
+        ticket_number VARCHAR(255) UNIQUE NOT NULL,
+        patient_id VARCHAR(255),
+        service_id VARCHAR(255),
+        doctor_id VARCHAR(255),
+        patient_name VARCHAR(255),
+        patient_age INT,
+        patient_gender VARCHAR(10),
+        service_name VARCHAR(255),
+        amount DECIMAL(10, 2) DEFAULT 0.00,
+        status VARCHAR(50) DEFAULT 'WAITING',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS patients (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        ticket_number VARCHAR(255) UNIQUE,
+        age INT,
+        gender VARCHAR(10),
+        phone VARCHAR(20),
+        address TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS services (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        price DECIMAL(10, 2) DEFAULT 0.00,
+        color VARCHAR(50),
+        active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS medicines (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        stock_quantity INT DEFAULT 0,
+        min_stock_alert INT DEFAULT 10,
+        price DECIMAL(10, 2) DEFAULT 0.00,
+        active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        setting_key VARCHAR(255) PRIMARY KEY,
+        setting_value TEXT,
+        updated_by VARCHAR(255),
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS centers (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        address TEXT,
+        phone VARCHAR(20),
+        email VARCHAR(255),
+        director_name VARCHAR(255),
+        rnis VARCHAR(255) UNIQUE,
+        capacity INT DEFAULT 50,
+        pispi_alias VARCHAR(255),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    console.log('✅ Structure de la base de données prête');
     return true;
   } catch (error) {
-    console.error('❌ Erreur de connexion à la base de données:', error.message);
-    console.log('🔄 Mode dégradé: utilisation des données en mémoire');
+    console.error('❌ Erreur d\'initialisation de la base de données:', error.message);
     return false;
   }
 }
@@ -90,6 +181,31 @@ export async function closeDatabase() {
 // MODÈLES DE DONNÉES
 // =============================================
 
+export class CenterModel {
+  static async findAll() {
+    return await query("SELECT * FROM centers ORDER BY name ASC");
+  }
+
+  static async findById(id) {
+    const rows = await query("SELECT * FROM centers WHERE id = ?", [id]);
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  static async create(centerData) {
+    const { 
+      id, name, address, phone, email, directorName, rnis, capacity, pispiAlias 
+    } = centerData;
+
+    await query(`
+      INSERT INTO centers (id, name, address, phone, email, director_name, rnis, capacity, pispi_alias)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [id || `center-${Date.now()}`, name, address, phone, email, directorName, rnis, capacity || 50, pispiAlias]);
+
+    const res = await query("SELECT * FROM centers WHERE name = ?", [name]);
+    return res.length > 0 ? res[0] : null;
+  }
+}
+
 export class UserModel {
   static async findById(id) {
     return await query('SELECT * FROM users WHERE id = ?', [id]);
@@ -100,13 +216,13 @@ export class UserModel {
   }
   
   static async findAll() {
-    return await query('SELECT id, name, email, role, specialite, active FROM users WHERE active = TRUE ORDER BY name');
+    return await query('SELECT id, name, email, role, specialty FROM users ORDER BY name');
   }
   
   static async create(userData) {
-    const { id, name, email, passwordHash, role, specialite } = userData;
+    const { id, name, email, passwordHash, role, specialite = null } = userData;
     await query(
-      'INSERT INTO users (id, name, email, password_hash, role, specialite) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO users (id, name, email, password, role, specialty) VALUES (?, ?, ?, ?, ?, ?)',
       [id, name, email, passwordHash, role, specialite]
     );
   }
@@ -374,6 +490,7 @@ export default {
   transaction,
   closeDatabase,
   UserModel,
+  CenterModel,
   TicketModel,
   PatientModel,
   ServiceModel,
