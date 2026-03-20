@@ -6,15 +6,16 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { 
-  initializeDatabase, 
-  UserModel, 
-  TicketModel, 
-  PatientModel, 
-  ServiceModel, 
-  MedicineModel, 
-  ConsultationModel, 
+import {
+  initializeDatabase,
+  UserModel,
+  TicketModel,
+  PatientModel,
+  ServiceModel,
+  MedicineModel,
+  ConsultationModel,
   SettingsModel,
+  LabResultModel,
   query
 } from './database.js';
 
@@ -33,8 +34,8 @@ let dbConnected = false;
 
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://sante.quantum221.com'] 
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://sante.quantum221.com']
     : ['http://localhost:3000', 'http://localhost:3004'],
   credentials: true
 }));
@@ -103,17 +104,25 @@ app.get('/api/stats', async (req, res) => {
     let criticalStock = 0;
 
     if (dbConnected) {
-      const statsPatients = await query("SELECT COUNT(*) as count FROM tickets WHERE DATE(created_at) = CURDATE()");
-      patientsToday = statsPatients[0].count;
+      try {
+        // Tickets du jour
+        const statsPatients = await query("SELECT COUNT(*) as count FROM tickets WHERE DATE(createdAt) = CURDATE()");
+        patientsToday = statsPatients[0].count;
 
-      const statsRevenue = await query("SELECT SUM(amount) as total FROM tickets WHERE DATE(created_at) = CURDATE() AND status = 'COMPLETED'");
-      revenueToday = statsRevenue[0].total || 0;
+        // Revenus du jour
+        const statsRevenue = await query("SELECT SUM(amount) as total FROM tickets WHERE DATE(createdAt) = CURDATE() AND status = 'COMPLETED'");
+        revenueToday = statsRevenue[0].total || 0;
 
-      const statsWaiting = await query("SELECT COUNT(*) as count FROM tickets WHERE status = 'WAITING'");
-      waitingRoom = statsWaiting[0].count;
+        // File d'attente
+        const statsWaiting = await query("SELECT COUNT(*) as count FROM tickets WHERE status = 'WAITING'");
+        waitingRoom = statsWaiting[0].count;
 
-      const statsStock = await query("SELECT COUNT(*) as count FROM medicines WHERE stock_quantity <= min_stock_alert AND active = TRUE");
-      criticalStock = statsStock[0].count;
+        // Stock critique (Note: Medicines n'a pas de colonne isActive en base)
+        const statsStock = await query("SELECT COUNT(*) as count FROM medicines WHERE stock <= minStock");
+        criticalStock = statsStock[0].count;
+      } catch (err) {
+        console.error('[STATS ERROR]:', err.message);
+      }
     }
 
     res.json({
@@ -128,6 +137,52 @@ app.get('/api/stats', async (req, res) => {
     });
   } catch (error) {
     res.json({ dailyPatients: { value: 0 }, dailyRevenue: { value: 0 }, waitingRoom: { value: 0 }, criticalStock: { value: 0 } });
+  }
+});
+
+// Services
+app.get('/api/services', async (req, res) => {
+  try {
+    if (!dbConnected) return res.json([]);
+    // Retourner TOUS les services triés par les plus récents
+    const services = await query('SELECT * FROM services ORDER BY createdAt DESC');
+    res.json(services);
+  } catch (error) {
+    console.error('[services GET]:', error.message);
+    res.json([]);
+  }
+});
+
+app.post('/api/services', async (req, res) => {
+  try {
+    if (!dbConnected) {
+      return res.status(503).json({ error: 'Base de données déconnectée' });
+    }
+    const b = req.body;
+    console.log('[API POST] Tentative création service:', b.name);
+
+    const serviceData = {
+      id: b.id || `service-${Date.now()}`,
+      name: b.name,
+      description: b.description || '',
+      price: parseFloat(b.price) || 0,
+      durationMinutes: b.durationMinutes || b.duration_minutes || 30,
+      color: b.color || '#3b82f6',
+      category: b.category || 'Général',
+      centerId: b.centerId || 'center-001'
+    };
+
+    try {
+      const result = await ServiceModel.create(serviceData);
+      console.log('✅ Service créé:', result.id);
+      res.json(result);
+    } catch (sqlErr) {
+      console.error('[SQL] Échec creation service:', sqlErr.message);
+      res.status(500).json({ error: 'Erreur SQL lors de l\'enregistrement', detail: sqlErr.message });
+    }
+  } catch (error) {
+    console.error('[API ERROR] POST /api/services:', error.message);
+    res.status(500).json({ error: 'Erreur serveur', detail: error.message });
   }
 });
 
@@ -155,7 +210,7 @@ app.post('/api/centers', async (req, res) => {
       capacity: req.body.capacity,
       pispiAlias: req.body.pispiAlias
     };
-    
+
     if (dbConnected) {
       const newCenter = await CenterModel.create(centerData);
       res.json(newCenter);
@@ -168,11 +223,59 @@ app.post('/api/centers', async (req, res) => {
   }
 });
 
+// Users
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = dbConnected ? await UserModel.findAll() : [];
+    res.json(users);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
 // Tickets
 app.get('/api/tickets', async (req, res) => {
   try {
-    const tickets = dbConnected ? await TicketModel.findAll() : [];
-    res.json(tickets);
+    if (!dbConnected) return res.json([]);
+    const results = await TicketModel.findAll();
+    
+    // SANITIZE: Créer des objets propres sans aucune propriété étrange
+    const sanitized = results.map(t => {
+      const clean = {};
+      for (const key in t) {
+        if (Object.prototype.hasOwnProperty.call(t, key)) {
+          clean[key] = t[key];
+        }
+      }
+      
+      // PROTECTION : S'assurer que serviceName contient TOUS les services liés
+      if (Array.isArray(t.services) && t.services.length > 0) {
+        const allNames = t.services.map(s => s.serviceName || s.name).filter(Boolean);
+        if (allNames.length > 0) {
+          clean.serviceName = allNames.join(' + ');
+        }
+      }
+      
+      return clean;
+    });
+
+    console.log(`[API] Sending ${sanitized.length} clean tickets`);
+    
+    // Explicitly stringify and end the stream
+    const jsonStr = JSON.stringify(sanitized);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.send(jsonStr);
+  } catch (error) {
+    console.error('[API ERROR] GET /api/tickets:', error.message);
+    res.json([]);
+  }
+});
+
+app.get('/api/tickets/:id/services', async (req, res) => {
+  try {
+    if (!dbConnected) return res.json([]);
+    const services = await TicketModel.getServices(req.params.id);
+    res.json(services);
   } catch (error) {
     res.json([]);
   }
@@ -180,44 +283,453 @@ app.get('/api/tickets', async (req, res) => {
 
 app.post('/api/tickets', async (req, res) => {
   try {
+    console.log('[API] New Ticket Request:', req.body);
+    const services = Array.isArray(req.body.services) ? req.body.services : [];
+    const normalizedServices = services.map(s => {
+      // Nettoyage robuste du prix (gestion des virgules et espaces)
+      const rawPrice = s.price ?? s.amount ?? 0;
+      const cleanPriceStr = String(rawPrice).replace(',', '.').replace(/\s/g, '');
+      return {
+        id: s.id || s.serviceId || null,
+        name: s.name || s.serviceName || '',
+        price: parseFloat(cleanPriceStr) || 0
+      };
+    });
+    const totalAmount = normalizedServices.reduce((sum, s) => sum + (s.price || 0), 0);
+    const serviceNames = normalizedServices
+      .map(s => s.name)
+      .filter(Boolean)
+      .join(' + ');
+
     const newTicket = {
-      id: `ticket-${Date.now()}`,
-      ticketNumber: `T-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`,
-      patientId: req.body.patientId || null,
-      serviceId: req.body.serviceId || null,
-      patientName: req.body.patientName || 'Anonyme',
-      patientAge: req.body.patientAge || 0,
-      patientGender: req.body.patientGender || 'M',
-      serviceName: req.body.serviceName || 'Consultation',
-      amount: req.body.amount || 0
+      id: req.body.id || `ticket-${Date.now()}`,
+      ticketNumber: req.body.ticketNumber || req.body.ticket_number || `T-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`,
+      patientId: req.body.patientId || req.body.patient_id || null,
+      serviceId: req.body.serviceId || req.body.service_id || null,
+      patientName: req.body.patientName || req.body.patient_name || 'Anonyme',
+      patientAge: req.body.patientAge || req.body.patient_age || 0,
+      patientGender: req.body.patientGender || req.body.patient_gender || 'M',
+      patientPhone: req.body.patientPhone || req.body.patient_phone || null,
+      patientAddress: req.body.patientAddress || req.body.patient_address || null,
+      serviceName: serviceNames || req.body.serviceName || req.body.service_name || 'Consultation',
+      amount: totalAmount || req.body.amount || 0,
+      paymentMethod: req.body.paymentMethod || req.body.payment_method || 'CASH',
+      services: normalizedServices,
+      status: req.body.status || 'WAITING'
     };
-    
+
     if (dbConnected) {
-      await TicketModel.create(newTicket);
+      const created = await TicketModel.create(newTicket);
+      return res.json(created || newTicket);
     }
-    res.json(newTicket);
+    return res.json(newTicket);
   } catch (error) {
-    res.status(500).json({ error: 'Erreur lors de la création du ticket' });
+    console.error('Erreur create ticket:', error);
+    const detail = process.env.NODE_ENV === 'production' ? undefined : error?.message;
+    res.status(500).json({ error: 'Erreur lors de la création du ticket', ...(detail ? { detail } : {}) });
+  }
+});
+
+app.patch('/api/tickets/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const status = req.body.status || req.body.newStatus;
+    if (!status) return res.status(400).json({ error: 'Statut requis' });
+    const updated = dbConnected ? await TicketModel.updateStatus(id, status, req.body.doctorId) : null;
+    res.json(updated || { id, status });
+  } catch (error) {
+    console.error('Erreur update ticket status:', error);
+    res.status(500).json({ error: 'Erreur mise à jour statut ticket' });
   }
 });
 
 // Patients
 app.get('/api/patients', async (req, res) => {
   try {
-    const patients = dbConnected ? await PatientModel.findAll() : [];
-    res.json(patients);
+    if (!dbConnected) return res.json([]);
+
+    // Requête directe et fiable par date de création (le plus récent en premier)
+    let patients = [];
+    try {
+      patients = await query('SELECT * FROM patients ORDER BY createdAt DESC');
+    } catch (sqlErr) {
+      console.error('[SQL patients]:', sqlErr.message);
+      // Tentative de repli par ID si createdAt échoue
+      patients = await query('SELECT * FROM patients ORDER BY id DESC');
+    }
+
+    // Mapper pour compatibilité React
+    const result = patients.map(p => ({
+      ...p,
+      firstName: p.firstName || '',
+      lastName: p.lastName || '',
+      fullName: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Inconnu',
+      ticketNumber: p.ticket_number || p.ticketNumber || '',
+      phoneNumber: p.phone || p.phoneNumber || '',
+      centerId: p.centerId || 'center-001'
+    }));
+
+    // PAS de filtre centerId - retourner TOUS les patients
+    res.json(result);
   } catch (error) {
+    console.error('[GET /api/patients]:', error.message);
     res.json([]);
+  }
+});
+
+app.post('/api/patients', async (req, res) => {
+  try {
+    if (!dbConnected) {
+      return res.status(503).json({ error: 'Base de données non connectée - Mode lecture seule' });
+    }
+
+    const b = req.body;
+    console.log('[API POST] Tentative création patient:', b.fullName || `${b.firstName} ${b.lastName}`);
+
+    const clean = (val) => (val === 'Non renseigné' || val === '' ? null : val);
+
+    const patientData = {
+      id: b.id || `p-${Date.now()}`,
+      name: b.name || b.fullName || `${b.firstName || ''} ${b.lastName || ''}`.trim(),
+      firstName: b.firstName || b.firstname || '',
+      lastName: b.lastName || b.lastname || '',
+      email: clean(b.email),
+      phone: clean(b.phone || b.phoneNumber),
+      age: parseInt(b.age) || null,
+      gender: b.gender || 'M',
+      address: clean(b.address),
+      centerId: b.centerId || 'center-001',
+      bloodGroup: clean(b.bloodGroup || b.bloodType),
+      allergies: clean(b.allergies),
+      emergencyContact: clean(b.emergencyContact),
+      dateOfBirth: b.dateOfBirth || b.birthDate || null
+    };
+
+    try {
+      const result = await PatientModel.create(patientData);
+      console.log('✅ Patient créé avec succès:', result.id);
+      res.json(result);
+    } catch (sqlErr) {
+      console.error('[SQL] Échec creation patient:', sqlErr.message);
+      res.status(500).json({ error: 'Erreur SQL lors de l\'enregistrement', detail: sqlErr.message });
+    }
+  } catch (error) {
+    console.error('[API ERROR] POST /api/patients:', error.message);
+    res.status(500).json({ error: 'Erreur serveur', detail: error.message });
   }
 });
 
 // Médicaments
 app.get('/api/medicines', async (req, res) => {
   try {
-    const medicines = dbConnected ? await MedicineModel.findAll() : [];
-    res.json(medicines);
+    // Retourner TOUS les médicaments triés par les plus récents
+    const medicines = dbConnected ? await query('SELECT * FROM medicines ORDER BY createdAt DESC') : [];
+    const mapped = medicines.map(m => ({
+      ...m,
+      stock_quantity: m.stock !== undefined ? m.stock : (m.stock_quantity || 0),
+      min_stock_alert: m.minStock !== undefined ? m.minStock : (m.min_stock_alert || 10)
+    }));
+    res.json(mapped);
+  } catch (error) {
+    console.error('[medicines GET]:', error.message);
+    res.json([]);
+  }
+});
+
+// Lab Results
+app.get('/api/lab-results', async (req, res) => {
+  try {
+    if (!dbConnected) return res.json([]);
+    const filters = req.query || {};
+    const results = await LabResultModel.findAll(filters);
+    res.json(results);
+  } catch (error) {
+    console.error('[lab-results GET]:', error.message);
+    res.json([]);
+  }
+});
+
+app.post('/api/lab-results', async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB offline' });
+    const b = req.body;
+    const data = {
+      id: b.id || `lab-${Date.now()}`,
+      testName: b.testName || b.test_name,
+      category: b.category || 'Général',
+      patientId: b.patientId || b.patient_id,
+      patientName: b.patientName || b.patient_name,
+      doctorId: b.doctorId || b.doctor_id,
+      doctorName: b.doctorName || b.doctor_name,
+      result: b.result,
+      status: b.status || 'PENDING',
+      notes: b.notes
+    };
+    const created = await LabResultModel.create(data);
+    res.json(created);
+  } catch (error) {
+    console.error('[lab-results POST]:', error.message);
+    res.status(500).json({ error: 'Erreur création résultat' });
+  }
+});
+
+app.patch('/api/lab-results/:id', async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB offline' });
+    const { id } = req.params;
+    const updated = await LabResultModel.update(id, req.body);
+    res.json(updated);
+  } catch (error) {
+    console.error('[lab-results PATCH]:', error.message);
+    res.status(500).json({ error: 'Erreur mise à jour résultat' });
+  }
+});
+
+// Sales
+app.get('/api/sales', async (req, res) => {
+  try {
+    const sales = dbConnected ? await query("SELECT * FROM sales ORDER BY createdAt DESC") : [];
+    res.json(sales);
   } catch (error) {
     res.json([]);
+  }
+});
+
+// Consultations
+app.get('/api/consultations', async (req, res) => {
+  try {
+    const parseJsonDeep = (val, depth = 3) => {
+      let out = val;
+      for (let i = 0; i < depth; i += 1) {
+        if (typeof out !== 'string') break;
+        try {
+          out = JSON.parse(out);
+        } catch {
+          break;
+        }
+      }
+      return out;
+    };
+
+    const normalizePrescription = (val) => {
+      let parsed = parseJsonDeep(val);
+      let arr = [];
+      if (Array.isArray(parsed)) arr = parsed;
+      else if (parsed && typeof parsed === 'object') arr = [parsed];
+      else if (typeof parsed === 'string') arr = [parsed];
+
+      arr = arr.flatMap((item) => {
+        const p = parseJsonDeep(item);
+        if (Array.isArray(p)) return p;
+        return [p];
+      });
+
+      return arr
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+          ...item,
+          dosage: item.dosage ?? item.posology ?? '',
+          quantity: item.quantity ?? item.qty ?? '',
+          form: item.form ?? ''
+        }));
+    };
+
+    const normalizeLabOrders = (val) => {
+      let parsed = parseJsonDeep(val);
+      let arr = [];
+      if (Array.isArray(parsed)) arr = parsed;
+      else if (parsed && typeof parsed === 'object') arr = [parsed];
+      else if (typeof parsed === 'string') arr = [parsed];
+
+      arr = arr.flatMap((item) => {
+        const p = parseJsonDeep(item);
+        if (Array.isArray(p)) return p;
+        return [p];
+      });
+
+      return arr
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') return item.id || item.serviceId || null;
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    let filters = req.query || {};
+
+    // If we filter by patientId, also resolve patientName as a fallback key.
+    if (dbConnected && filters.patientId) {
+      const patientRows = await query(
+        'SELECT id, name FROM patients WHERE id = ? LIMIT 1',
+        [filters.patientId]
+      );
+      if (patientRows && patientRows[0]?.name) {
+        filters = { ...filters, patientName: patientRows[0].name };
+      }
+    }
+
+    const consultations = dbConnected ? await ConsultationModel.findAll(filters) : [];
+    const normalized = consultations.map(c => ({
+      ...c,
+      prescription: normalizePrescription(c.prescription),
+      labOrders: normalizeLabOrders(c.labOrders)
+    }));
+    res.json(normalized);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+app.post('/api/consultations', async (req, res) => {
+  try {
+    const parseJsonDeep = (val, depth = 3) => {
+      let out = val;
+      for (let i = 0; i < depth; i += 1) {
+        if (typeof out !== 'string') break;
+        try {
+          out = JSON.parse(out);
+        } catch {
+          break;
+        }
+      }
+      return out;
+    };
+
+    const normalizePrescription = (val) => {
+      let parsed = parseJsonDeep(val);
+      let arr = [];
+      if (Array.isArray(parsed)) arr = parsed;
+      else if (parsed && typeof parsed === 'object') arr = [parsed];
+      else if (typeof parsed === 'string') arr = [parsed];
+
+      arr = arr.flatMap((item) => {
+        const p = parseJsonDeep(item);
+        if (Array.isArray(p)) return p;
+        return [p];
+      });
+
+      return arr
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+          ...item,
+          dosage: item.dosage ?? item.posology ?? '',
+          quantity: item.quantity ?? item.qty ?? '',
+          form: item.form ?? ''
+        }));
+    };
+
+    const normalizeLabOrders = (val) => {
+      let parsed = parseJsonDeep(val);
+      let arr = [];
+      if (Array.isArray(parsed)) arr = parsed;
+      else if (parsed && typeof parsed === 'object') arr = [parsed];
+      else if (typeof parsed === 'string') arr = [parsed];
+
+      arr = arr.flatMap((item) => {
+        const p = parseJsonDeep(item);
+        if (Array.isArray(p)) return p;
+        return [p];
+      });
+
+      return arr
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') return item.id || item.serviceId || null;
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    const toJson = (val) => {
+      if (val === undefined || val === null) return null;
+      return typeof val === 'string' ? val : JSON.stringify(val);
+    };
+
+    let resolvedPatientId = req.body.patientId || req.body.patient_id || null;
+    let resolvedPatientName = req.body.patientName || req.body.patient_name || null;
+
+    if (dbConnected) {
+      // Validate provided patientId; some UI flows send placeholders like "p1".
+      let patientRow = null;
+      if (resolvedPatientId) {
+        const byId = await query('SELECT id, name, phone, phoneNumber FROM patients WHERE id = ? LIMIT 1', [resolvedPatientId]);
+        patientRow = byId && byId[0] ? byId[0] : null;
+      }
+
+      if (!patientRow) {
+        const ticketId = req.body.ticketId || req.body.ticket_id;
+        let ticketRow = null;
+        if (ticketId) {
+          const rows = await query(
+            'SELECT patientName, patientPhone FROM tickets WHERE id = ? LIMIT 1',
+            [ticketId]
+          );
+          ticketRow = rows && rows[0] ? rows[0] : null;
+        }
+
+        const candidateName = resolvedPatientName || ticketRow?.patientName || null;
+        const candidatePhone = ticketRow?.patientPhone || null;
+
+        if (candidatePhone) {
+          const byPhone = await query(
+            'SELECT id, name, phone, phoneNumber FROM patients WHERE phone = ? OR phoneNumber = ? ORDER BY createdAt DESC LIMIT 1',
+            [candidatePhone, candidatePhone]
+          );
+          patientRow = byPhone && byPhone[0] ? byPhone[0] : null;
+        }
+
+        if (!patientRow && candidateName) {
+          const byName = await query(
+            'SELECT id, name, phone, phoneNumber FROM patients WHERE name = ? ORDER BY createdAt DESC LIMIT 1',
+            [candidateName]
+          );
+          patientRow = byName && byName[0] ? byName[0] : null;
+        }
+      }
+
+      if (patientRow) {
+        resolvedPatientId = patientRow.id;
+        resolvedPatientName = resolvedPatientName || patientRow.name;
+      }
+    }
+
+    const consData = {
+      id: req.body.id || `consult-${Date.now()}`,
+      ticketId: req.body.ticketId || req.body.ticket_id,
+      patientId: resolvedPatientId,
+      doctorId: req.body.doctorId || req.body.doctor_id,
+      doctorName: req.body.doctorName || req.body.doctor_name,
+      patientName: resolvedPatientName,
+      temperature: req.body.temperature || null,
+      weight: req.body.weight || null,
+      bloodPressure: req.body.bloodPressure || req.body.blood_pressure || null,
+      pulse: req.body.pulse || null,
+      diagnosis: req.body.diagnosis,
+      symptoms: req.body.symptoms,
+      prescription: toJson(req.body.prescription),
+      labOrders: toJson(req.body.labOrders),
+      notes: req.body.notes,
+      centerId: req.body.centerId || req.body.center_id
+    };
+    if (dbConnected) {
+      const created = await ConsultationModel.create(consData);
+      const payload = created || consData;
+      return res.json({
+        ...payload,
+        prescription: normalizePrescription(payload.prescription),
+        labOrders: normalizeLabOrders(payload.labOrders)
+      });
+    }
+    return res.json({
+      ...consData,
+      prescription: normalizePrescription(consData.prescription),
+      labOrders: normalizeLabOrders(consData.labOrders)
+    });
+  } catch (error) {
+    console.error('Erreur création consultation:', error);
+    const detail = process.env.NODE_ENV === 'production' ? undefined : error?.message;
+    res.status(500).json({ error: 'Erreur création consultation', ...(detail ? { detail } : {}) });
   }
 });
 
@@ -225,20 +737,56 @@ app.get('/api/center', async (req, res) => {
   try {
     const settings = dbConnected ? await SettingsModel.getAll() : {};
     res.json({
+      id: "center-001",
       name: settings.center_name || "O'CLIC SANTE Principal",
       address: settings.center_address || "Abidjan, Côte d'Ivoire",
       phone: settings.center_phone || "+225 07 07 07 07 07",
-      email: settings.center_email || "contact@sante.quantum221.com"
+      email: settings.center_email || "contact@sante-principal.ci"
     });
   } catch (error) {
-    res.json({ name: "O'CLIC SANTE Principal" });
+    res.json({ id: "center-001", name: "O'CLIC SANTE Principal" });
   }
 });
 
+app.patch('/api/center', async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'Base de données non connectée' });
+
+    const b = req.body;
+    console.log('[API PATCH] Mise à jour des informations du centre:', b.name);
+
+    // On mappe les champs de l'objet sur les clés de settings
+    if (b.name !== undefined) await SettingsModel.set('center_name', b.name, 'admin');
+    if (b.address !== undefined) await SettingsModel.set('center_address', b.address, 'admin');
+    if (b.phone !== undefined) await SettingsModel.set('center_phone', b.phone, 'admin');
+    if (b.email !== undefined) await SettingsModel.set('center_email', b.email, 'admin');
+
+    // Retourner les nouvelles infos
+    const s = await SettingsModel.getAll();
+    res.json({
+      id: "center-001",
+      name: s.center_name,
+      address: s.center_address,
+      phone: s.center_phone,
+      email: s.center_email
+    });
+  } catch (error) {
+    console.error('[API ERROR] PATCH /api/center:', error.message);
+    res.status(500).json({ error: 'Erreur lors de la sauvegarde' });
+  }
+});
+
+// SPA fallback: serve index.html for non-API routes (fixes Cannot GET /patients/:id on refresh)
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'Route API non trouvée' });
+  }
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 // Initialisation au démarrage
 async function startServer() {
   dbConnected = await initializeDatabase();
-  
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Serveur O'CLIC SANTE DB démarré sur http://localhost:${PORT}`);
     console.log(`🗄️  Statut Base de Données: ${dbConnected ? 'CONNECTÉE' : 'ÉCHEC (Mode mémoire)'}`);
