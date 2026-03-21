@@ -8,7 +8,15 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Configuration de la base de données
-const dbConfig = {
+const databaseUrl = process.env.DATABASE_URL;
+
+// On construit l'objet de configuration finale
+const dbConfig = databaseUrl ? {
+  uri: databaseUrl,
+  ssl: (databaseUrl.includes('render.com') || databaseUrl.includes('hstgr.io') || process.env.DB_SSL === 'true') 
+       ? { rejectUnauthorized: false } 
+       : undefined
+} : {
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || 'root',
@@ -18,7 +26,10 @@ const dbConfig = {
   timezone: '+00:00',
   acquireTimeout: 60000,
   timeout: 60000,
-  reconnect: true
+  reconnect: true,
+  ssl: (process.env.DB_HOST && process.env.DB_HOST !== 'localhost' || process.env.DB_SSL === 'true') 
+       ? { rejectUnauthorized: false } 
+       : undefined
 };
 
 // Pool de connexions
@@ -27,8 +38,16 @@ let pool;
 // Initialisation de la base de données
 export async function initializeDatabase() {
   try {
-    // Créer le pool de connexions
-    pool = mysql.createPool(dbConfig);
+    // Créer le pool de connexions (mysql2 supporte soit une chaîne URI soit un objet config)
+    if (typeof dbConfig === 'string' || (dbConfig && dbConfig.uri)) {
+      const uri = typeof dbConfig === 'string' ? dbConfig : dbConfig.uri;
+      const options = typeof dbConfig === 'object' ? { ...dbConfig } : {};
+      if (options.uri) delete options.uri; 
+      
+      pool = mysql.createPool(uri, options);
+    } else {
+      pool = mysql.createPool(dbConfig);
+    }
 
     // Tester la connexion
     const [rows] = await pool.query('SELECT 1 + 1 AS solution');

@@ -33,10 +33,23 @@ const JWT_SECRET = process.env.JWT_SECRET || 'o_clic_sante_jwt_secret_very_long_
 let dbConnected = false;
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3004',
+  'http://localhost:5173',
+  'https://sante.quantum221.com',
+  process.env.FRONTEND_URL,
+  process.env.RENDER_EXTERNAL_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://sante.quantum221.com']
-    : ['http://localhost:3000', 'http://localhost:3004'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.includes('.render.com')) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS non autorisé'));
+    }
+  },
   credentials: true
 }));
 
@@ -109,8 +122,8 @@ app.get('/api/stats', async (req, res) => {
         const statsPatients = await query("SELECT COUNT(*) as count FROM tickets WHERE DATE(createdAt) = CURDATE()");
         patientsToday = statsPatients[0].count;
 
-        // Revenus du jour
-        const statsRevenue = await query("SELECT SUM(amount) as total FROM tickets WHERE DATE(createdAt) = CURDATE() AND status = 'COMPLETED'");
+        // Revenus du jour calendaire (demandé par l'utilisateur)
+        const statsRevenue = await query("SELECT SUM(amount) as total FROM tickets WHERE DATE(createdAt) = CURDATE()");
         revenueToday = statsRevenue[0].total || 0;
 
         // File d'attente
@@ -240,6 +253,9 @@ app.get('/api/tickets', async (req, res) => {
     const results = await TicketModel.findAll();
     
     // SANITIZE: Créer des objets propres sans aucune propriété étrange
+    const servicesList = dbConnected ? await query('SELECT name, price FROM services') : [];
+    const servicePriceMap = new Map(servicesList.map(s => [String(s.name).trim().toLowerCase(), s.price]));
+
     const sanitized = results.map(t => {
       const clean = {};
       for (const key in t) {
@@ -248,12 +264,28 @@ app.get('/api/tickets', async (req, res) => {
         }
       }
       
-      // PROTECTION : S'assurer que serviceName contient TOUS les services liés
+      // PROTECTION : S'assurer que serviceName et les prix sont corrects
       if (Array.isArray(t.services) && t.services.length > 0) {
-        const allNames = t.services.map(s => s.serviceName || s.name).filter(Boolean);
-        if (allNames.length > 0) {
-          clean.serviceName = allNames.join(' + ');
-        }
+        const enhancedServices = t.services.map(s => {
+            const name = s.serviceName || s.name || '';
+            let price = parseFloat(s.price || 0);
+            
+            // Si le prix est à 0, on tente de le retrouver par le nom dans le catalogue
+            if (price === 0 && name) {
+                const foundPrice = servicePriceMap.get(name.trim().toLowerCase());
+                if (foundPrice) price = parseFloat(foundPrice);
+            }
+
+            return {
+                ...s,
+                name: name,
+                price: price
+            };
+        });
+
+        clean.services = enhancedServices;
+        // Mettre à jour serviceName si nécessaire
+        clean.serviceName = enhancedServices.map(s => s.name).join(' + ');
       }
       
       return clean;
@@ -284,9 +316,13 @@ app.get('/api/tickets/:id/services', async (req, res) => {
 app.post('/api/tickets', async (req, res) => {
   try {
     console.log('[API] New Ticket Request:', req.body);
-    const services = Array.isArray(req.body.services) ? req.body.services : [];
+    const services = Array.isArray(req.body.services) && req.body.services.length > 0 
+      ? req.body.services 
+      : (req.body.serviceName && req.body.serviceName.includes(' + ') 
+          ? req.body.serviceName.split(' + ').map(n => ({ name: n.trim() }))
+          : (req.body.serviceName ? [{ name: req.body.serviceName }] : []));
+
     const normalizedServices = services.map(s => {
-      // Nettoyage robuste du prix (gestion des virgules et espaces)
       const rawPrice = s.price ?? s.amount ?? 0;
       const cleanPriceStr = String(rawPrice).replace(',', '.').replace(/\s/g, '');
       return {
@@ -295,6 +331,19 @@ app.post('/api/tickets', async (req, res) => {
         price: parseFloat(cleanPriceStr) || 0
       };
     });
+
+    // RECONSTRUIT LES PRIX SI MANQUANTS (SECOURS)
+    if (dbConnected && normalizedServices.length > 0) {
+      for (let i = 0; i < normalizedServices.length; i++) {
+        if (normalizedServices[i].price === 0) {
+          try {
+            const [found] = await query('SELECT price FROM services WHERE name = ? LIMIT 1', [normalizedServices[i].name]);
+            if (found) normalizedServices[i].price = parseFloat(found.price);
+          } catch (e) { /* ignore */ }
+        }
+      }
+    }
+
     const totalAmount = normalizedServices.reduce((sum, s) => sum + (s.price || 0), 0);
     const serviceNames = normalizedServices
       .map(s => s.name)
