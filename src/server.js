@@ -477,7 +477,7 @@ app.post('/api/patients', async (req, res) => {
 app.get('/api/medicines', async (req, res) => {
   try {
     // Retourner TOUS les médicaments triés par les plus récents
-    const medicines = dbConnected ? await query('SELECT * FROM medicines ORDER BY createdAt DESC') : [];
+    const medicines = dbConnected ? await query('SELECT * FROM medicines ORDER BY created_at DESC') : [];
     const mapped = medicines.map(m => ({
       ...m,
       stock_quantity: m.stock !== undefined ? m.stock : (m.stock_quantity || 0),

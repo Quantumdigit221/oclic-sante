@@ -948,5 +948,6 @@ export default {
   ServiceModel,
   MedicineModel,
   ConsultationModel,
-  SettingsModel
+  SettingsModel,
+  LabResultModel
 };
