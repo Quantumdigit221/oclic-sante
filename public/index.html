@@ -7,93 +7,23 @@
   <meta name="description" content="O'CLIC SANTE - Plateforme de gestion médicale complète" />
   <meta name="keywords" content="santé, médical, gestion, cabinet, clinique, o' clic santé" />
   <title>O'CLIC SANTE - Plateforme de Santé</title>
-  <script>
-    window.onerror = function(msg, url, line, col, error) {
-      console.error("Global Error:", msg, url, line, col, error);
-      // alert("Erreur Détectée: " + msg + " à la ligne " + line);
-    };
-    window.onunhandledrejection = function(event) {
-      console.error("Unhandled Rejection:", event.reason);
-      // alert("Erreur de Promesse: " + event.reason);
-    };
-  </script>
 
-  <!-- Bibliothèques PDF -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  
-  <!-- REACT COMPATIBILITY FIXER (Fixes revenue and Array methods without overwriting UI) -->
-  <script src="/react-compatibility-fixer.js?v=20260320f"></script>
-  
   <link rel="stylesheet" href="/print-styles.css">
+  <script src="/react-compatibility-fixer.js?v=20260320m"></script>
 
-  <!-- React Application Assets (The Core App) -->
-  <script type="module" crossorigin src="/assets/index-Cg4yQY5E.js?v=20260319d"></script>
+  <script type="module" crossorigin src="/assets/index-CbALrtT3.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/vendor-DPOtbovq.js">
   <link rel="modulepreload" crossorigin href="/assets/router-B20A3YI1.js">
   <link rel="modulepreload" crossorigin href="/assets/heavy-DzHJSI6Z.js">
-  <link rel="modulepreload" crossorigin href="/assets/ui-CBXw7PH5.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-DhUZ00cH.css">
-
-  <!-- Bridge d'impression global pour React -->
-  <script>
-    window.printTicket = function(data) {
-      if (!data) return;
-      console.log('Impression du ticket:', data);
-      const printWindow = window.open('', '_blank');
-      const ticketNum = data.ticketNumber || data.ticket_number || data.id || '---';
-      const patient = data.patientName || data.patient_name || 'Anonyme';
-      const service = data.serviceName || data.service_name || 'Consultation';
-
-      printWindow.document.write(`
-        <html><head><title>TICKET - O'CLIC SANTE</title>
-        <style>
-          body { font-family: 'Courier New', monospace; width: 80mm; padding: 20px; font-size: 14px; text-align: center; }
-          .header { border-bottom: 2px dashed #000; margin-bottom: 15px; padding-bottom: 15px; }
-          .num { font-size: 40px; font-weight: bold; margin: 15px 0; }
-          .footer { border-top: 2px dashed #000; margin-top: 15px; padding-top: 15px; font-size: 11px; }
-        </style></head>
-        <body onload="window.print(); window.close();">
-          <div class="header">
-            <h1 style="margin:0; font-size:20px;">O'CLIC SANTE</h1>
-            <p style="margin:5px 0;">Centre Médical Dakar</p>
-          </div>
-          <div class="num">${ticketNum}</div>
-          <div style="text-align:left; margin:20px 0;">
-            <div style="margin-bottom:8px;"><strong>PATIENT:</strong> ${patient}</div>
-            <div style="margin-bottom:8px;"><strong>SERVICE:</strong> ${service}</div>
-            <div style="margin-bottom:8px;"><strong>DATE:</strong> ${new Date().toLocaleString()}</div>
-          </div>
-          <div class="footer">
-            <p>MERCI DE VOTRE CONFIANCE</p>
-            <p style="font-weight:bold;">VOTRE SANTE, NOTRE PRIORITE</p>
-          </div>
-        </body></html>
-      `);
-      printWindow.document.close();
-    };
-    
-    // Alias pour la compatibilité avec tous les composants
-    window.printDocument = window.printTicket;
-  </script>
-
-  <style>
-    /* Global styles to ensure React mounts correctly */
-    body { margin: 0; padding: 0; min-height: 100vh; background-color: #f8fafc; }
-    #root { height: 100%; min-height: 100vh; }
-  </style>
+  <link rel="modulepreload" crossorigin href="/assets/ui-Bl8jPYp5.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-BEhe1ibQ.css">
 </head>
 
 <body>
-  <div id="root">
-    <!-- Loading State -->
-    <div style="height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; color: #64748b;">
-      <div style="text-align: center;">
-        <div style="font-size: 32px; margin-bottom: 20px;">🏥</div>
-        <p>Chargement de O'CLIC SANTE...</p>
-      </div>
-    </div>
-  </div>
+  <div id="root"></div>
 </body>
 
 </html>
