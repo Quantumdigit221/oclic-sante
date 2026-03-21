@@ -29,15 +29,7 @@
             if (!savedCenter || savedCenter === 'null' || savedCenter === '{}' || savedCenter === 'undefined' || (savedCenter && savedCenter.includes('center-1'))) {
                 console.warn('SESSION-RESCUER: currentCenter is missing or invalid! Attempting rescue...');
                 
-                const hostname = window.location.hostname;
-                let apiUrl = '/api/center';
-                if (hostname.includes('samacaisse.cloud') || hostname.includes('samacaisse')) {
-                    apiUrl = 'https://oclic-sante.onrender.com/api/center';
-                } else if (hostname.includes('sante.quantum221.com')) {
-                    apiUrl = 'https://sante.quantum221.com/api/center';
-                }
-
-                fetch(apiUrl)
+                fetch('/api/center')
                     .then(r => r.json())
                     .then(center => {
                         if (center && (center.name || center.id)) {
