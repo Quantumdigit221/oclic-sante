@@ -184,12 +184,18 @@ export async function initializeDatabase() {
         ticket_id VARCHAR(255),
         patient_id VARCHAR(255),
         doctor_id VARCHAR(255),
+        doctor_name VARCHAR(255),
+        patient_name VARCHAR(255),
         diagnosis TEXT,
         symptoms TEXT,
         prescription TEXT,
-        recommendations TEXT,
-        follow_up_date DATE,
+        lab_orders TEXT,
         notes TEXT,
+        temperature DECIMAL(5,2),
+        weight DECIMAL(5,2),
+        blood_pressure VARCHAR(50),
+        pulse INT,
+        center_id VARCHAR(255) DEFAULT 'center-001',
         status VARCHAR(50) DEFAULT 'COMPLETED',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -701,128 +707,74 @@ export class ConsultationModel {
     let patientId = patientIdOrFilters;
     let patientName = null;
 
-    // Backward-compatible: accept either positional args or a filters object
     if (patientIdOrFilters && typeof patientIdOrFilters === 'object' && !Array.isArray(patientIdOrFilters)) {
-      patientId =
-        patientIdOrFilters.patientId ||
-        patientIdOrFilters.patient_id ||
-        null;
-      patientName =
-        patientIdOrFilters.patientName ||
-        patientIdOrFilters.patient_name ||
-        null;
-      doctorId =
-        patientIdOrFilters.doctorId ||
-        patientIdOrFilters.doctor_id ||
-        doctorId ||
-        null;
+      patientId = patientIdOrFilters.patientId || patientIdOrFilters.patient_id || null;
+      patientName = patientIdOrFilters.patientName || patientIdOrFilters.patient_name || null;
+      doctorId = patientIdOrFilters.doctorId || patientIdOrFilters.doctor_id || doctorId || null;
       date = patientIdOrFilters.date || date || null;
     }
 
-    let sql = `
-      SELECT c.*, p.name as patient_name, u.name as doctor_name
-      FROM consultations c
-      LEFT JOIN patients p ON c.patientId = p.id
-      LEFT JOIN users u ON c.doctorId = u.id
-    `;
-
+    let sql = `SELECT * FROM consultations`;
     const conditions = [];
     const params = [];
 
     if (patientId && patientName) {
-      conditions.push('(c.patientId = ? OR c.patientName = ?)');
+      conditions.push('(patient_id = ? OR patient_name = ?)');
       params.push(patientId, patientName);
     } else if (patientId) {
-      conditions.push('c.patientId = ?');
+      conditions.push('patient_id = ?');
       params.push(patientId);
     } else if (patientName) {
-      conditions.push('c.patientName = ?');
+      conditions.push('patient_name = ?');
       params.push(patientName);
     }
 
     if (doctorId) {
-      conditions.push('c.doctorId = ?');
+      conditions.push('doctor_id = ?');
       params.push(doctorId);
     }
 
     if (date) {
-      conditions.push('DATE(c.createdAt) = ?');
+      conditions.push('DATE(created_at) = ?');
       params.push(date);
     }
 
-    if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
-    }
-
-    sql += ' ORDER BY c.createdAt DESC';
-
+    if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+    sql += ' ORDER BY created_at DESC';
     return await query(sql, params);
   }
 
   static async findById(id) {
-    const res = await query(`
-      SELECT c.*, p.name as patient_name, u.name as doctor_name
-      FROM consultations c
-      LEFT JOIN patients p ON c.patientId = p.id
-      LEFT JOIN users u ON c.doctorId = u.id
-      WHERE c.id = ?
-    `, [id]);
+    const res = await query('SELECT * FROM consultations WHERE id = ?', [id]);
     return res && res.length > 0 ? res[0] : null;
   }
 
   static async create(consultationData) {
     const {
-      id,
-      ticketId,
-      patientId,
-      doctorId,
-      diagnosis,
-      symptoms,
-      prescription,
-      notes,
-      doctorName,
-      patientName,
-      centerId,
-      temperature,
-      weight,
-      bloodPressure,
-      pulse,
-      labOrders
+      id, ticketId, patientId, doctorId, diagnosis, symptoms, prescription,
+      notes, doctorName, patientName, centerId, temperature, weight, bloodPressure, pulse, labOrders
     } = consultationData;
 
     await query(`
       INSERT INTO consultations (
-        id, ticketId, patientId, doctorId, doctorName, patientName,
-        temperature, weight, bloodPressure, pulse,
-        symptoms, diagnosis, notes, prescription, labOrders, centerId
+        id, ticket_id, patient_id, doctor_id, doctor_name, patient_name,
+        temperature, weight, blood_pressure, pulse,
+        symptoms, diagnosis, notes, prescription, lab_orders, center_id
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id,
-      ticketId,
-      patientId,
-      doctorId,
-      doctorName || null,
-      patientName || '',
-      temperature || null,
-      weight || null,
-      bloodPressure || null,
-      pulse || null,
-      symptoms || null,
-      diagnosis || null,
-      notes || null,
-      prescription || null,
-      labOrders || null,
-      centerId || 'center-001'
+      id, ticketId || null, patientId || null, doctorId || null,
+      doctorName || null, patientName || '',
+      temperature || null, weight || null, bloodPressure || null, pulse || null,
+      symptoms || null, diagnosis || null, notes || null, prescription || null,
+      labOrders || null, centerId || 'center-001'
     ]);
 
     return await this.findById(id);
   }
 
   static async updateStatus(id, status) {
-    // The current schema has no status column; only touch updatedAt.
-    await query('UPDATE consultations SET updatedAt = CURRENT_TIMESTAMP WHERE id = ?', [id]);
-
+    await query('UPDATE consultations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
     return await this.findById(id);
   }
 }
