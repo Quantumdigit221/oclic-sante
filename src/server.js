@@ -480,13 +480,90 @@ app.get('/api/medicines', async (req, res) => {
     const medicines = dbConnected ? await query('SELECT * FROM medicines ORDER BY created_at DESC') : [];
     const mapped = medicines.map(m => ({
       ...m,
-      stock_quantity: m.stock !== undefined ? m.stock : (m.stock_quantity || 0),
-      min_stock_alert: m.minStock !== undefined ? m.minStock : (m.min_stock_alert || 10)
+      stock: m.stock_quantity !== undefined ? m.stock_quantity : (m.stock || 0),
+      minStock: m.min_stock_alert !== undefined ? m.min_stock_alert : (m.minStock || 10),
+      stock_quantity: m.stock_quantity !== undefined ? m.stock_quantity : (m.stock || 0),
+      min_stock_alert: m.min_stock_alert !== undefined ? m.min_stock_alert : (m.minStock || 10)
     }));
     res.json(mapped);
   } catch (error) {
     console.error('[medicines GET]:', error.message);
     res.json([]);
+  }
+});
+
+app.post('/api/medicines', async (req, res) => {
+  try {
+    const b = req.body;
+    console.log('[API POST] Création médicament:', b.name);
+    const medId = b.id || `med-${Date.now()}`;
+    const medData = {
+      id: medId,
+      name: b.name,
+      dci: b.dci || b.genericName || '',
+      category: b.category || 'Général',
+      form: b.form || '',
+      stock_quantity: parseInt(b.stock || b.stock_quantity || 0),
+      min_stock_alert: parseInt(b.minStock || b.min_stock_alert || 10),
+      price: parseFloat(b.price || 0),
+      expiryDate: b.expiryDate || b.expiry_date || null,
+      batchNumber: b.batchNumber || b.batch_number || null
+    };
+    if (!dbConnected) {
+      console.log('Mode mémoire: Médicament créé:', medId);
+      return res.json({ ...medData, stock: medData.stock_quantity, minStock: medData.min_stock_alert });
+    }
+    try {
+      await query(
+        `INSERT INTO medicines (id, name, stock_quantity, min_stock_alert, price, active)
+         VALUES (?, ?, ?, ?, ?, TRUE)
+         ON DUPLICATE KEY UPDATE name=VALUES(name), stock_quantity=VALUES(stock_quantity), price=VALUES(price)`,
+        [medData.id, medData.name, medData.stock_quantity, medData.min_stock_alert, medData.price]
+      );
+      const rows = await query('SELECT * FROM medicines WHERE id = ?', [medId]);
+      const m = rows[0] || medData;
+      res.json({ ...m, stock: m.stock_quantity, minStock: m.min_stock_alert });
+    } catch (sqlErr) {
+      console.error('[SQL] medicines POST:', sqlErr.message);
+      res.status(500).json({ error: 'Erreur SQL', detail: sqlErr.message });
+    }
+  } catch (error) {
+    console.error('[medicines POST]:', error.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.patch('/api/medicines/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const b = req.body;
+    if (!dbConnected) return res.json({ id, ...b });
+    const fields = [];
+    const params = [];
+    if (b.stock !== undefined || b.stock_quantity !== undefined) { fields.push('stock_quantity = ?'); params.push(parseInt(b.stock ?? b.stock_quantity)); }
+    if (b.minStock !== undefined || b.min_stock_alert !== undefined) { fields.push('min_stock_alert = ?'); params.push(parseInt(b.minStock ?? b.min_stock_alert)); }
+    if (b.price !== undefined) { fields.push('price = ?'); params.push(parseFloat(b.price)); }
+    if (b.name !== undefined) { fields.push('name = ?'); params.push(b.name); }
+    if (fields.length === 0) return res.json({ id, ...b });
+    params.push(id);
+    await query(`UPDATE medicines SET ${fields.join(', ')} WHERE id = ?`, params);
+    const rows = await query('SELECT * FROM medicines WHERE id = ?', [id]);
+    const m = rows[0] || { id, ...b };
+    res.json({ ...m, stock: m.stock_quantity, minStock: m.min_stock_alert });
+  } catch (error) {
+    console.error('[medicines PATCH]:', error.message);
+    res.status(500).json({ error: 'Erreur mise à jour médicament' });
+  }
+});
+
+app.delete('/api/medicines/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (dbConnected) await query('DELETE FROM medicines WHERE id = ?', [id]);
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('[medicines DELETE]:', error.message);
+    res.status(500).json({ error: 'Erreur suppression médicament' });
   }
 });
 
