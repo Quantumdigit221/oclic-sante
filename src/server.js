@@ -38,6 +38,8 @@ const allowedOrigins = [
   'http://localhost:3004',
   'http://localhost:5173',
   'https://sante.quantum221.com',
+  'https://santesaas.samacaisse.cloud',
+  'https://samacaisse.cloud',
   process.env.FRONTEND_URL,
   process.env.RENDER_EXTERNAL_URL
 ].filter(Boolean);
