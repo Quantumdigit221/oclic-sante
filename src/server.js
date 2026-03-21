@@ -16,7 +16,8 @@ import {
   ConsultationModel,
   SettingsModel,
   LabResultModel,
-  query
+  query,
+  getDbErrorLog
 } from './database.js';
 
 // Configuration
@@ -108,6 +109,21 @@ app.post('/api/login', async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
+});
+
+// Santé / Monitoring DB Hostinger
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    environment: process.env.NODE_ENV,
+    db: {
+      connected: !!dbConnected,
+      host: process.env.DB_HOST || '127.0.0.1 (default)',
+      user: process.env.DB_USER,
+      name: process.env.DB_NAME,
+      lastError: getDbErrorLog() || 'Aucune erreur détectée'
+    }
+  });
 });
 
 // Stats (Real DB Stats)
