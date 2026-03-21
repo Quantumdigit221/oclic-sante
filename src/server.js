@@ -354,6 +354,7 @@ app.post('/api/tickets', async (req, res) => {
       .filter(Boolean)
       .join(' + ');
 
+    const now = new Date().toISOString();
     const newTicket = {
       id: req.body.id || `ticket-${Date.now()}`,
       ticketNumber: req.body.ticketNumber || req.body.ticket_number || `T-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`,
@@ -368,14 +369,22 @@ app.post('/api/tickets', async (req, res) => {
       amount: totalAmount || req.body.amount || 0,
       paymentMethod: req.body.paymentMethod || req.body.payment_method || 'CASH',
       services: normalizedServices,
-      status: req.body.status || 'WAITING'
+      status: req.body.status || 'WAITING',
+      createdAt: now,
+      updatedAt: now
     };
+
+    const safeTicket = (t) => ({
+      ...t,
+      createdAt: t.createdAt && !isNaN(new Date(t.createdAt).getTime()) ? new Date(t.createdAt).toISOString() : now,
+      updatedAt: t.updatedAt && !isNaN(new Date(t.updatedAt).getTime()) ? new Date(t.updatedAt).toISOString() : now,
+    });
 
     if (dbConnected) {
       const created = await TicketModel.create(newTicket);
-      return res.json(created || newTicket);
+      return res.json(safeTicket(created || newTicket));
     }
-    return res.json(newTicket);
+    return res.json(safeTicket(newTicket));
   } catch (error) {
     console.error('Erreur create ticket:', error);
     const detail = process.env.NODE_ENV === 'production' ? undefined : error?.message;
