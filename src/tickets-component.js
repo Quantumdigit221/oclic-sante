@@ -135,9 +135,9 @@ export const Tickets = () => {
       return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     }
     if (formatStr === 'dd/MM/yyyy HH:mm') {
-      return d.toLocaleDateString('fr-FR', { 
-        day: '2-digit', 
-        month: '2-digit', 
+      return d.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
@@ -153,7 +153,7 @@ export const Tickets = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ticketData)
       });
-      
+
       if (response.ok) {
         const newTicket = await response.json();
         setTickets(prev => [...prev, newTicket]);
@@ -181,16 +181,16 @@ export const Tickets = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       });
-      
+
       if (response.ok) {
-        setTickets(prev => prev.map(t => 
+        setTickets(prev => prev.map(t =>
           t.id === ticketId ? { ...t, status: newStatus } : t
         ));
       }
     } catch (error) {
       console.error('Erreur:', error);
       // Simulation pour le mode démo
-      setTickets(prev => prev.map(t => 
+      setTickets(prev => prev.map(t =>
         t.id === ticketId ? { ...t, status: newStatus } : t
       ));
     }
@@ -216,7 +216,7 @@ export const Tickets = () => {
 
     try {
       const uniqueSelectedServices = [...new Set(selectedServices)];
-      const uniqueSelectedServicesList = services.filter(s => 
+      const uniqueSelectedServicesList = services.filter(s =>
         uniqueSelectedServices.includes(getServiceId(s))
       );
 
@@ -225,36 +225,32 @@ export const Tickets = () => {
         return total + servicePrice;
       }, 0);
 
-      // Créer un ticket pour chaque service sélectionné
-      const createdTickets = [];
+      const servicesPayload = uniqueSelectedServicesList.map(service => ({
+        id: getServiceId(service),
+        name: service.name,
+        price: parseFloat(String(service.price)) || 0
+      }));
 
-      for (const service of uniqueSelectedServicesList) {
-        const ticketData = {
-          centerId: currentCenter.id,
-          patientName: formData.patientName,
-          patientAge: parseInt(formData.patientAge),
-          patientGender: formData.patientGender,
-          patientPhone: formData.patientPhone,
-          patientAddress: formData.patientAddress,
-          serviceId: getServiceId(service),
-          serviceName: service.name,
-          amount: parseFloat(String(service.price)) || 0,
-          paymentMethod: formData.paymentMethod,
-          doctorId: formData.doctorId,
-          notes: formData.notes,
-          status: 'WAITING'
-        };
+      const ticketData = {
+        centerId: currentCenter.id,
+        patientName: formData.patientName,
+        patientAge: parseInt(formData.patientAge),
+        patientGender: formData.patientGender,
+        patientPhone: formData.patientPhone,
+        patientAddress: formData.patientAddress,
+        services: servicesPayload,
+        amount: safeAmount,
+        paymentMethod: formData.paymentMethod,
+        doctorId: formData.doctorId,
+        notes: formData.notes,
+        status: 'WAITING'
+      };
 
-        const ticket = await createTicket(ticketData);
-        if (ticket) {
-          createdTickets.push(ticket);
-        }
-      }
-
-      if (createdTickets.length > 0) {
-        setPrintTicket(createdTickets[0]);
-        if (createdTickets.length > 1) {
-          alert(`${createdTickets.length} tickets créés avec succès.`);
+      const ticket = await createTicket(ticketData);
+      if (ticket) {
+        setPrintTicket(ticket);
+        if (servicesPayload.length > 1) {
+          alert(`1 ticket créé avec ${servicesPayload.length} services.`);
         }
       }
     } catch (error) {
@@ -266,7 +262,7 @@ export const Tickets = () => {
     // Réinitialiser le formulaire
     setShowModal(false);
     setFormData({
-      patientName: '', patientAge: '', patientGender: 'F', patientPhone: '', 
+      patientName: '', patientAge: '', patientGender: 'F', patientPhone: '',
       patientAddress: '', serviceId: '', doctorId: '', paymentMethod: 'CASH', notes: ''
     });
     setSelectedServices([]);
@@ -287,19 +283,19 @@ export const Tickets = () => {
 
   const filteredServices = serviceSearch
     ? services.filter(service => {
-        const id = getServiceId(service);
-        const isActive = service?.isActive !== false;
-        const isValid = id !== '';
-        const matchesSearch = (service?.name?.toLowerCase().includes(serviceSearch.toLowerCase()) ||
-          service?.category?.toLowerCase().includes(serviceSearch.toLowerCase()));
-        return isActive && isValid && (serviceSearch ? matchesSearch : true);
-      })
+      const id = getServiceId(service);
+      const isActive = service?.isActive !== false;
+      const isValid = id !== '';
+      const matchesSearch = (service?.name?.toLowerCase().includes(serviceSearch.toLowerCase()) ||
+        service?.category?.toLowerCase().includes(serviceSearch.toLowerCase()));
+      return isActive && isValid && (serviceSearch ? matchesSearch : true);
+    })
     : services.filter(service => {
-        const id = getServiceId(service);
-        const isActive = service?.isActive !== false;
-        const isValid = id !== '';
-        return isActive && isValid;
-      });
+      const id = getServiceId(service);
+      const isActive = service?.isActive !== false;
+      const isValid = id !== '';
+      return isActive && isValid;
+    });
 
   const handleSelectPatient = (patient) => {
     setFormData({
@@ -507,8 +503,153 @@ export const Tickets = () => {
         </div>
       </div>
 
-      {/* Modal et autres composants peuvent être ajoutés ici */}
-      {/* ... */}
+      {/* Modal d'impression */}
+      {printTicket && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-900">Imprimer Ticket</h3>
+              <button
+                onClick={() => setPrintTicket(null)}
+                className="text-slate-400 hover:text-slate-600 p-2"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="border border-slate-200 rounded-lg p-6 mb-6 bg-white">
+              {/* Header du ticket */}
+              <div className="text-center mb-6 pb-4 border-b-2 border-slate-800">
+                <div className="text-2xl font-bold mb-2">O'CLIC SANTE</div>
+                <div className="text-sm text-slate-600">Plateforme de Gestion Médicale</div>
+                <div className="text-xs text-slate-500 mt-1">Téléphone: +224 XXX XXX XXX</div>
+              </div>
+
+              {/* Informations du ticket */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <div className="text-xs font-semibold text-slate-600">N° Ticket:</div>
+                  <div className="font-bold">{printTicket.ticketNumber}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-600">Date:</div>
+                  <div>{format(new Date(printTicket.createdAt), 'dd/MM/yyyy HH:mm')}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-600">Patient:</div>
+                  <div className="font-semibold">{printTicket.patientName}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-600">Montant:</div>
+                  <div className="font-bold text-emerald-600">{printTicket.amount.toLocaleString()} GNF</div>
+                </div>
+              </div>
+
+              {/* Services */}
+              <div className="mb-6">
+                <div className="text-xs font-semibold text-slate-600 mb-2">Services:</div>
+                {printTicket.services.map((service, index) => (
+                  <div key={index} className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <div>
+                      <div className="font-medium">{service.name}</div>
+                      <div className="text-xs text-slate-500">{service.duration} min</div>
+                    </div>
+                    <div className="font-semibold">{service.price.toLocaleString()} GNF</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Méthode de paiement */}
+              <div className="mb-6">
+                <div className="text-xs font-semibold text-slate-600">Paiement:</div>
+                <div className="flex items-center gap-2 mt-1">
+                  {printTicket.paymentMethod === 'CASH' ? '💵' : '📱'}
+                  <span>{printTicket.paymentMethod === 'CASH' ? 'Espèces' : 'Mobile Money'}</span>
+                </div>
+              </div>
+
+              {/* Statut */}
+              <div className="text-center">
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${printTicket.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' :
+                    printTicket.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                      'bg-amber-100 text-amber-800'
+                  }`}>
+                  {printTicket.status === 'COMPLETED' ? '✅ Terminé' :
+                    printTicket.status === 'IN_PROGRESS' ? '⚡ En cours' :
+                      '⏱ En attente'}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="text-center mt-8 pt-4 border-t border-slate-200 text-xs text-slate-500">
+                Merci de votre confiance - O'CLIC SANTE
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  // Impression du ticket - use print-specific window to avoid destroying React
+                  const printContent = document.querySelector('.bg-white.border.border-slate-200');
+                  if (printContent) {
+                    const printWindow = window.open('', '_blank');
+                    if (printWindow) {
+                      printWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                          <title>Ticket - ${printTicket.ticketNumber}</title>
+                          <style>
+                            body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; }
+                            .text-center { text-align: center; }
+                            .font-bold { font-weight: bold; }
+                            .text-2xl { font-size: 1.5rem; }
+                            .mb-2 { margin-bottom: 0.5rem; }
+                            .mb-6 { margin-bottom: 1.5rem; }
+                            .pb-4 { padding-bottom: 1rem; }
+                            .border-b-2 { border-bottom: 2px solid #000; }
+                            .border-b { border-bottom: 1px solid #ddd; }
+                            .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+                            .grid { display: grid; }
+                            .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+                            .gap-4 { gap: 1rem; }
+                            .flex { display: flex; }
+                            .items-center { align-items: center; }
+                            .justify-between { justify-content: space-between; }
+                            .mt-8 { margin-top: 2rem; }
+                            .pt-4 { padding-top: 1rem; }
+                            .border-t { border-top: 1px solid #ddd; }
+                            .text-xs { font-size: 0.75rem; }
+                            .text-sm { font-size: 0.875rem; }
+                            .font-semibold { font-weight: 600; }
+                            .emerald-600 { color: #059669; }
+                            @media print { body { padding: 0; } }
+                          </style>
+                        </head>
+                        <body>${printContent.outerHTML}</body>
+                        </html>
+                      `);
+                      printWindow.document.close();
+                      printWindow.focus();
+                      setTimeout(() => printWindow.print(), 250);
+                    }
+                  }
+                }}
+                className="flex-1 bg-teal-400 hover:bg-teal-500 text-slate-900 px-4 py-2 rounded-lg flex items-center justify-center gap-2 font-medium"
+              >
+                <Printer className="w-4 h-4" />
+                Imprimer
+              </button>
+              <button
+                onClick={() => setPrintTicket(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
