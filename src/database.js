@@ -19,17 +19,19 @@ const dbConfig = databaseUrl ? {
        ? { rejectUnauthorized: false } 
        : undefined
 } : {
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || '127.0.0.1',
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'oclic_sante_db',
   charset: 'utf8mb4',
   timezone: '+00:00',
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true,
-  ssl: (process.env.DB_HOST && process.env.DB_HOST !== 'localhost' || process.env.DB_SSL === 'true') 
+  acquireTimeout: 10000,
+  timeout: 10000,
+  connectionLimit: 10,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  ssl: (process.env.DB_HOST && (process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1') || process.env.DB_SSL === 'true') 
        ? { rejectUnauthorized: false } 
        : undefined
 };
@@ -51,6 +53,7 @@ export function getDbErrorLog() {
 
 // Initialisation de la base de données
 export async function initializeDatabase() {
+  logToFile(`INIT: Tentative de connexion DB sur ${dbConfig.host || 'URI'}...`);
   try {
     dbErrorLog = null;
     // Créer le pool de connexions (mysql2 supporte soit une chaîne URI soit un objet config)
