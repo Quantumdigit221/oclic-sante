@@ -359,11 +359,11 @@ export class TicketModel {
     const rows = await query('SELECT * FROM tickets ORDER BY created_at DESC');
     return rows.map(r => ({
       ...r,
-      ticketNumber: r.ticket_number || r.ticketNumber,
-      patientName: r.patient_name || r.patientName,
-      patientAge: r.patient_age || r.patientAge,
-      patientGender: r.patient_gender || r.patientGender,
-      serviceName: r.service_name || r.serviceName
+      ticketNumber: r.ticket_number || r.ticketNumber || '',
+      patientName: r.patient_name || r.patientName || 'Inconnu',
+      patientAge: r.patient_age || r.patientAge || 0,
+      patientGender: r.patient_gender || r.patientGender || 'M',
+      serviceName: r.service_name || r.serviceName || 'Consultation'
     }));
   }
   static async findById(id) {
@@ -451,8 +451,8 @@ export class ConsultationModel {
       ticketId: r.ticket_id,
       patientId: r.patient_id,
       doctorId: r.doctor_id,
-      doctorName: r.doctor_name,
-      patientName: r.patient_name,
+      doctorName: r.doctor_name || 'Inconnu',
+      patientName: r.patient_name || 'Inconnu',
       bloodPressure: r.blood_pressure,
       labOrders: r.lab_orders
     }));
