@@ -18,8 +18,10 @@ const dbConfig = {
   database: process.env.DB_NAME || 'u622816723_oclics',
   charset: 'utf8mb4',
   timezone: '+00:00',
-  acquireTimeout: 20000,
-  connectionLimit: 5,
+  acquireTimeout: 10000,
+  connectionLimit: 15,
+  waitForConnections: true,
+  queueLimit: 0,
   enableKeepAlive: true,
   ssl: (process.env.DB_SSL === 'true') ? { rejectUnauthorized: false } : undefined
 };
@@ -273,9 +275,22 @@ export async function initializeDatabase() {
         try { await query(`ALTER TABLE ${t} ADD COLUMN ${c} ${d}`); } catch (e) { }
         await sleep(500);
       }
-      // Index
-      try { await query(`ALTER TABLE patients ADD INDEX idx_p_center (center_id)`); } catch (e) { }
-      try { await query(`ALTER TABLE tickets ADD INDEX idx_t_center (center_id)`); } catch (e) { }
+      // Index critiques pour améliorer les performances (ORDER BY / search)
+      const indexList = [
+        ['patients', 'idx_p_center', '(center_id)'],
+        ['patients', 'idx_p_created', '(created_at)'],
+        ['tickets', 'idx_t_center', '(center_id)'],
+        ['tickets', 'idx_t_created', '(created_at)'],
+        ['medicines', 'idx_m_name', '(name)'],
+        ['medicines', 'idx_m_created', '(created_at)'],
+        ['consultations', 'idx_c_created', '(created_at)'],
+        ['lab_results', 'idx_lab_created', '(created_at)'],
+        ['sales', 'idx_sales_created', '(created_at)']
+      ];
+      for (const [t, i, c] of indexList) {
+        try { await query(`ALTER TABLE ${t} ADD INDEX ${i} ${c}`); } catch (e) { }
+        await sleep(300);
+      }
     }
 
     runAsyncMigrations().catch(e => console.error('Migration error:', e));
