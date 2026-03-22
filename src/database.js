@@ -14,10 +14,10 @@ dotenv.config();
 const dbConfig = {
   host: process.env.DB_HOST || '127.0.0.1',
   port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'root',
+  user: process.env.DB_USER || 'u622816723_oclics',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'oclic_sante_db',
-  dbName: process.env.DB_NAME || 'oclic_sante_db',
+  database: process.env.DB_NAME || 'u622816723_oclics',
+  dbName: process.env.DB_NAME || 'u622816723_oclics',
   charset: 'utf8mb4',
   timezone: '+00:00',
   acquireTimeout: 15000,
