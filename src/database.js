@@ -342,12 +342,22 @@ export async function initializeDatabase() {
         ['medicines', 'expiry_date', 'expiry_date DATE AFTER supplier'],
         ['medicines', 'storage_conditions', 'storage_conditions VARCHAR(255) AFTER expiry_date'],
         ['medicines', 'stock', 'stock INT DEFAULT 0 AFTER stock_quantity'],
-        ['medicines', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+        ['medicines', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'],
+        
+        // Index de performance pour Hostinger
+        ['patients', 'idx_patient_center', 'INDEX (center_id)'],
+        ['tickets', 'idx_ticket_center', 'INDEX (center_id)'],
+        ['consultations', 'idx_cons_center', 'INDEX (center_id)'],
+        ['services', 'idx_svc_center', 'INDEX (center_id)']
       ];
 
       for (const [table, col, ddl] of migrations) {
-        await addColumnIfMissing(table, col, ddl);
-        await sleep(800); // 800ms de pause entre chaque pour la stabilité
+        if (ddl.startsWith('INDEX')) {
+           try { await query(`ALTER TABLE ${table} ADD ${ddl}`); } catch(e) {}
+        } else {
+           await addColumnIfMissing(table, col, ddl);
+        }
+        await sleep(800); 
       }
       
       logToFile("ASYNC MIGRATIONS: Toutes les colonnes ont été vérifiées/ajoutées.");
