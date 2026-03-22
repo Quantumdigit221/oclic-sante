@@ -748,8 +748,28 @@ export class TicketModel {
 }
 
 export class PatientModel {
-  static async findAll() {
-    return await query('SELECT * FROM patients ORDER BY id DESC');
+  static async findAll(centerId = null) {
+    let sql = 'SELECT * FROM patients';
+    const params = [];
+    if (centerId) {
+      // Supporte les deux noms de colonnes possibles
+      sql += ' WHERE (center_id = ? OR centerId = ?)';
+      params.push(centerId, centerId);
+    }
+    sql += ' ORDER BY created_at DESC';
+    const rows = await query(sql, params);
+    
+    return rows.map(r => ({
+      ...r,
+      firstName: r.firstName || r.first_name || '',
+      lastName: r.lastName || r.last_name || '',
+      dateOfBirth: r.dateOfBirth || r.date_of_birth || null,
+      phoneNumber: r.phoneNumber || r.phone_number || r.phone || '',
+      bloodGroup: r.bloodGroup || r.blood_group || '',
+      emergencyContact: r.emergencyContact || r.emergency_contact || '',
+      centerId: r.centerId || r.center_id || 'center-001',
+      createdAt: r.createdAt || r.created_at
+    }));
   }
 
   static async findById(id) {
@@ -843,7 +863,16 @@ export class ServiceModel {
 
 export class MedicineModel {
   static async findAll() {
-    return await query('SELECT * FROM medicines ORDER BY name');
+    const rows = await query('SELECT * FROM medicines ORDER BY name');
+    return rows.map(r => ({
+      ...r,
+      genericName: r.genericName || r.generic_name || '',
+      stockQuantity: r.stockQuantity || r.stock_quantity || r.stock || 0,
+      minStockAlert: r.minStockAlert || r.min_stock_alert || 10,
+      expiryDate: r.expiryDate || r.expiry_date || null,
+      storageConditions: r.storageConditions || r.storage_conditions || '',
+      createdAt: r.createdAt || r.created_at
+    }));
   }
 
   static async findById(id) {
