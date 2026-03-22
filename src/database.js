@@ -66,10 +66,18 @@ export async function initializeDatabase() {
       pool = mysql.createPool(dbConfig);
     }
 
-    // Tester la connexion
-    const [rows] = await pool.query('SELECT 1 + 1 AS solution');
-    console.log('✅ Base de données connectée avec succès');
-    logToFile(`CONNEXION RÉUSSIE sur ${dbName || 'DB'}`);
+    // Tester la connexion (version robuste)
+    logToFile(`CONNEXION: Tentative sur ${dbConfig.host}:${dbConfig.port} / Base: ${dbConfig.database} / User: ${dbConfig.user}`);
+    
+    try {
+      const [rows] = await pool.query('SELECT 1 + 1 AS solution');
+      console.log('✅ Base de données connectée avec succès');
+      logToFile(`SUCCÈS: Connexion DB établie.`);
+    } catch (err) {
+      dbErrorLog = err.message;
+      logToFile(`ERREUR FATALE: ${err.message}`);
+      throw err; // On laisse remonter pour que initializeDatabase catch et renvoie false
+    }
     
     // Créer les tables si elles n'existent pas
     console.log('🏗️ Création/Vérification des tables...');

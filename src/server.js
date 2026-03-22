@@ -37,6 +37,48 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
+// Route de diagnostic de la base de données
+app.get('/debug-db', async (req, res) => {
+  try {
+    const errorLog = getDbErrorLog();
+    let dbStatus = 'UNKNOWN';
+    let dbDetails = {};
+    
+    if (dbConnected) {
+      dbStatus = 'CONNECTED';
+      const [rows] = await query('SELECT DATABASE() as db, USER() as user, NOW() as time');
+      dbDetails = rows;
+    } else {
+      dbStatus = 'DISCONNECTED / MEMORY MODE';
+    }
+
+    res.header('Content-Type', 'text/html');
+    res.send(`
+      <html>
+        <head><title>O'CLIC SANTE - DB DEBUG</title><style>body{font-family:sans-serif;padding:40px;line-height:1.6} pre{background:#f4f4f4;padding:15px;border-radius:5px} .status-connected{color:green;font-weight:bold} .status-error{color:red;font-weight:bold}</style></head>
+        <body>
+          <h1>🔧 Diagnostic Base de Données</h1>
+          <p>Statut: <span class="${dbStatus === 'CONNECTED' ? 'status-connected' : 'status-error'}">${dbStatus}</span></p>
+          
+          <h3>📝 Dernier Log d'Erreur</h3>
+          <pre>${errorLog || 'Aucune erreur consignée.'}</pre>
+
+          <h3>📂 Détails de Connexion</h3>
+          <pre>${JSON.stringify(dbDetails, null, 2)}</pre>
+
+          <h3>🚀 Test de persistence</h3>
+          <p>Pour tester si la base écrit vraiment, <a href="/api/center">cliquez ici pour voir le centre</a>.</p>
+          
+          <hr>
+          <button onclick="window.location.reload()">Rafraîchir</button>
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    res.status(500).send(`Erreur de diagnostic: ${err.message}`);
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'o_clic_sante_jwt_secret_very_long_and_secure_2024';
 
