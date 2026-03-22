@@ -543,8 +543,8 @@ export class TicketModel {
     let sql = `
       SELECT t.*, s.name as serviceName, s.category as serviceCategory, s.color as serviceColor, u.name as doctorName
       FROM tickets t
-      LEFT JOIN services s ON t.serviceId = s.id
-      LEFT JOIN users u ON t.doctorId = u.id
+      LEFT JOIN services s ON t.service_id = s.id
+      LEFT JOIN users u ON t.doctor_id = u.id
     `;
     const params = [];
 
@@ -553,7 +553,7 @@ export class TicketModel {
       params.push(status);
     }
 
-    sql += ' ORDER BY t.createdAt ASC';
+    sql += ' ORDER BY t.created_at ASC';
 
     const rows = await query(sql, params);
     
@@ -588,8 +588,8 @@ export class TicketModel {
     const res = await query(`
       SELECT t.*, s.name as serviceName, s.color as serviceColor, u.name as doctorName
       FROM tickets t
-      LEFT JOIN services s ON t.serviceId = s.id
-      LEFT JOIN users u ON t.doctorId = u.id
+      LEFT JOIN services s ON t.service_id = s.id
+      LEFT JOIN users u ON t.doctor_id = u.id
       WHERE t.id = ?
     `, [id]);
     if (!res || res.length === 0) return null;
