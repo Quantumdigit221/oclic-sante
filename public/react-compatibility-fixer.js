@@ -1,7 +1,32 @@
 (function() {
     'use strict';
     
-    console.log('O-CLIC-SANTE-FIXER v2.4: Session Rescue & Fixes Active...');
+    // --- SMART FETCH (Auto-Retry on 503) ---
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        let attempts = 0;
+        const maxAttempts = 3;
+        while (attempts < maxAttempts) {
+            try {
+                const response = await originalFetch(...args);
+                if (response.status === 503 && attempts < maxAttempts - 1) {
+                    attempts++;
+                    await new Promise(r => setTimeout(r, 1000 * attempts));
+                    continue;
+                }
+                return response;
+            } catch (err) {
+                if (attempts < maxAttempts - 1) {
+                   attempts++;
+                   await new Promise(r => setTimeout(r, 1000 * attempts));
+                   continue;
+                }
+                throw err;
+            }
+        }
+    };
+
+    console.log('O-CLIC-SANTE-FIXER v2.5: Smart-Fetch & Resilience Active...');
     
     // VERIFICATION DE LA BASE DE DONNÉES (FRONTEND)
     fetch('/api/center').then(r => r.json()).then(center => {

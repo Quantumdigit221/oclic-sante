@@ -20,9 +20,9 @@ const dbConfig = {
   dbName: process.env.DB_NAME || 'u622816723_oclics',
   charset: 'utf8mb4',
   timezone: '+00:00',
-  acquireTimeout: 15000,
-  timeout: 15000,
-  connectionLimit: 10,
+  acquireTimeout: 20000,
+  timeout: 20000,
+  connectionLimit: 5,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   ssl: (process.env.DB_SSL === 'true') ? { rejectUnauthorized: false } : undefined
