@@ -83,13 +83,90 @@ export async function initializeDatabase() {
     logToFile(`SUCCÈS: DB Connectée.`);
 
     // Tables Vitales
-    await query(`CREATE TABLE IF NOT EXISTS users (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), email VARCHAR(255) UNIQUE, password VARCHAR(255), role VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    await query(`CREATE TABLE IF NOT EXISTS tickets (id VARCHAR(255) PRIMARY KEY, ticket_number VARCHAR(255) UNIQUE, patient_name VARCHAR(255), status VARCHAR(50) DEFAULT 'WAITING', center_id VARCHAR(255) DEFAULT 'center-001', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    await query(`CREATE TABLE IF NOT EXISTS ticket_services (id VARCHAR(255) PRIMARY KEY, ticket_id VARCHAR(255), service_name VARCHAR(255), price DECIMAL(10,2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    await query(`CREATE TABLE IF NOT EXISTS patients (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), center_id VARCHAR(255) DEFAULT 'center-001', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    await query(`CREATE TABLE IF NOT EXISTS services (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), price DECIMAL(10,2), isActive TINYINT(1) DEFAULT 1)`);
-    await query(`CREATE TABLE IF NOT EXISTS medicines (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), stock_quantity INT DEFAULT 0, price DECIMAL(10,2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    await query(`CREATE TABLE IF NOT EXISTS settings (setting_key VARCHAR(255) PRIMARY KEY, setting_value TEXT)`);
+    await query(`CREATE TABLE IF NOT EXISTS users (
+      id VARCHAR(255) PRIMARY KEY, 
+      name VARCHAR(255), 
+      email VARCHAR(255) UNIQUE, 
+      password VARCHAR(255), 
+      role VARCHAR(50) DEFAULT 'USER',
+      specialty VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS tickets (
+      id VARCHAR(255) PRIMARY KEY, 
+      ticket_number VARCHAR(255) UNIQUE, 
+      patient_id VARCHAR(255),
+      service_id VARCHAR(255),
+      doctor_id VARCHAR(255),
+      patient_name VARCHAR(255), 
+      patient_age INT,
+      patient_gender VARCHAR(10),
+      patient_phone VARCHAR(50),
+      patient_address TEXT,
+      service_name VARCHAR(255), 
+      amount DECIMAL(10,2) DEFAULT 0.00, 
+      payment_method VARCHAR(50) DEFAULT 'CASH',
+      notes TEXT,
+      status VARCHAR(50) DEFAULT 'WAITING', 
+      center_id VARCHAR(255) DEFAULT 'center-001', 
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS ticket_services (
+      id VARCHAR(255) PRIMARY KEY, 
+      ticket_id VARCHAR(255), 
+      service_id VARCHAR(255),
+      service_name VARCHAR(255), 
+      price DECIMAL(10,2), 
+      quantity INT DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS patients (
+      id VARCHAR(255) PRIMARY KEY, 
+      name VARCHAR(255), 
+      firstName VARCHAR(255),
+      lastName VARCHAR(255),
+      dateOfBirth DATE,
+      age INT,
+      gender VARCHAR(10),
+      phone VARCHAR(20),
+      address TEXT,
+      center_id VARCHAR(255) DEFAULT 'center-001', 
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS services (
+      id VARCHAR(255) PRIMARY KEY, 
+      name VARCHAR(255), 
+      description TEXT,
+      category VARCHAR(255) DEFAULT 'Consultation',
+      price DECIMAL(10,2), 
+      durationMinutes INT DEFAULT 30,
+      color VARCHAR(50),
+      centerId VARCHAR(255) DEFAULT 'center-001',
+      isActive TINYINT(1) DEFAULT 1,
+      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS medicines (
+      id VARCHAR(255) PRIMARY KEY, 
+      name VARCHAR(255), 
+      generic_name VARCHAR(255),
+      stock_quantity INT DEFAULT 0, 
+      min_stock_alert INT DEFAULT 10,
+      price DECIMAL(10,2), 
+      category VARCHAR(255) DEFAULT 'Général',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS settings (
+      setting_key VARCHAR(255) PRIMARY KEY, 
+      setting_value TEXT,
+      updated_by VARCHAR(255),
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`);
 
     // Migrations en arrière-plan
     async function runAsyncMigrations() {
@@ -126,7 +203,7 @@ export async function initializeDatabase() {
       try { await query(`ALTER TABLE tickets ADD INDEX idx_t_center (center_id)`); } catch (e) { }
     }
 
-    // runAsyncMigrations().catch(e => console.error('Migration error:', e));
+    runAsyncMigrations().catch(e => console.error('Migration error:', e));
 
     logToFile("INIT: OK");
     return true;
