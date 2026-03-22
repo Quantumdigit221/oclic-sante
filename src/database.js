@@ -71,7 +71,8 @@ export async function initializeDatabase() {
     // Tester la connexion
     const [rows] = await pool.query('SELECT 1 + 1 AS solution');
     console.log('✅ Base de données connectée avec succès');
-
+    logToFile(`CONNEXION RÉUSSIE sur ${dbName || 'DB'}`);
+    
     // Créer les tables si elles n'existent pas
     console.log('🏗️ Création/Vérification des tables...');
 
