@@ -84,9 +84,14 @@ export async function initializeDatabase() {
         patient_name VARCHAR(255),
         patient_age INT,
         patient_gender VARCHAR(10),
+        patient_phone VARCHAR(50),
+        patient_address TEXT,
         service_name VARCHAR(255),
         amount DECIMAL(10, 2) DEFAULT 0.00,
+        payment_method VARCHAR(50) DEFAULT 'CASH',
+        notes TEXT,
         status VARCHAR(50) DEFAULT 'WAITING',
+        center_id VARCHAR(255) DEFAULT 'center-001',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -95,13 +100,13 @@ export async function initializeDatabase() {
     await query(`
       CREATE TABLE IF NOT EXISTS ticket_services (
         id VARCHAR(255) PRIMARY KEY,
-        ticketId VARCHAR(255) NOT NULL,
-        serviceId VARCHAR(255) NOT NULL,
-        serviceName VARCHAR(255),
+        ticket_id VARCHAR(255) NOT NULL,
+        service_id VARCHAR(255) NOT NULL,
+        service_name VARCHAR(255),
         price DECIMAL(10, 2) DEFAULT 0.00,
         quantity INT DEFAULT 1,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_ticket_services_ticket (ticketId)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ts_ticket (ticket_id)
       )
     `);
 
@@ -235,34 +240,48 @@ export async function initializeDatabase() {
 
     // Corrections de schéma (idempotentes)
     const columnExists = async (table, column) => {
-      const rows = await query(
-        `SELECT COUNT(*) as count
-         FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-        [dbConfig.database, table, column]
-      );
-      return rows && rows[0] && rows[0].count > 0;
+      try {
+        const rows = await query(
+          `SELECT COUNT(*) as count
+           FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_NAME = ? AND COLUMN_NAME = ?`,
+          [table, column]
+        );
+        return rows && rows[0] && rows[0].count > 0;
+      } catch (e) {
+        return false;
+      }
     };
     const addColumnIfMissing = async (table, column, ddl) => {
       if (!(await columnExists(table, column))) {
-        await query(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+        try {
+          await query(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+        } catch (e) {
+          console.warn(`[DB] Could not add column ${column} to ${table}:`, e.message);
+        }
       }
     };
+    await addColumnIfMissing('tickets', 'patient_phone', 'patient_phone VARCHAR(50) AFTER patient_gender');
+    await addColumnIfMissing('tickets', 'patient_address', 'patient_address TEXT AFTER patient_phone');
+    await addColumnIfMissing('tickets', 'payment_method', 'payment_method VARCHAR(50) DEFAULT "CASH" AFTER amount');
+    await addColumnIfMissing('tickets', 'notes', 'notes TEXT AFTER payment_method');
+    await addColumnIfMissing('tickets', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER status');
 
     await addColumnIfMissing('services', 'description', 'description TEXT AFTER name');
     await addColumnIfMissing('services', 'category', 'category VARCHAR(255) DEFAULT "Consultation" AFTER name');
-    await addColumnIfMissing('services', 'durationMinutes', 'durationMinutes INT DEFAULT 30 AFTER price');
-    await addColumnIfMissing('services', 'centerId', 'centerId VARCHAR(255) DEFAULT "center-001" AFTER durationMinutes');
-    await addColumnIfMissing('services', 'isActive', 'isActive TINYINT(1) DEFAULT 1 AFTER centerId');
-    await addColumnIfMissing('services', 'createdAt', 'createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
-    await addColumnIfMissing('services', 'updatedAt', 'updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
-    await addColumnIfMissing('patients', 'firstName', 'firstName VARCHAR(255) AFTER name');
-    await addColumnIfMissing('patients', 'lastName', 'lastName VARCHAR(255) AFTER firstName');
-    await addColumnIfMissing('patients', 'dateOfBirth', 'dateOfBirth DATE AFTER lastName');
-    await addColumnIfMissing('patients', 'phoneNumber', 'phoneNumber VARCHAR(20) AFTER phone');
-    await addColumnIfMissing('patients', 'centerId', "centerId VARCHAR(255) DEFAULT 'center-001' AFTER lastName");
-    await addColumnIfMissing('patients', 'createdAt', 'createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
-    await addColumnIfMissing('patients', 'updatedAt', 'updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    await addColumnIfMissing('services', 'duration_minutes', 'duration_minutes INT DEFAULT 30 AFTER price');
+    await addColumnIfMissing('services', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER duration_minutes');
+    await addColumnIfMissing('services', 'is_active', 'is_active TINYINT(1) DEFAULT 1 AFTER center_id');
+    await addColumnIfMissing('services', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+    await addColumnIfMissing('services', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    
+    await addColumnIfMissing('patients', 'first_name', 'first_name VARCHAR(255) AFTER name');
+    await addColumnIfMissing('patients', 'last_name', 'last_name VARCHAR(255) AFTER first_name');
+    await addColumnIfMissing('patients', 'date_of_birth', 'date_of_birth DATE AFTER last_name');
+    await addColumnIfMissing('patients', 'phone_number', 'phone_number VARCHAR(20) AFTER phone');
+    await addColumnIfMissing('patients', 'center_id', "center_id VARCHAR(255) DEFAULT 'center-001' AFTER last_name");
+    await addColumnIfMissing('patients', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+    await addColumnIfMissing('patients', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
     try { await query("UPDATE patients SET centerId = 'center-001' WHERE centerId IS NULL"); } catch (e) { }
     try { await query("UPDATE patients SET phoneNumber = phone WHERE phoneNumber IS NULL AND phone IS NOT NULL"); } catch (e) { }
 
@@ -439,14 +458,22 @@ export class TicketModel {
 
     const placeholders = ids.map(() => '?').join(', ');
     const rows = await query(
-      `SELECT * FROM ticket_services WHERE ticketId IN (${placeholders}) ORDER BY createdAt ASC`,
+      `SELECT * FROM ticket_services WHERE ticket_id IN (${placeholders}) ORDER BY created_at ASC`,
       ids
     );
 
     const servicesByTicket = new Map();
     rows.forEach(row => {
-      if (!servicesByTicket.has(row.ticketId)) servicesByTicket.set(row.ticketId, []);
-      servicesByTicket.get(row.ticketId).push(row);
+      const tid = row.ticket_id || row.ticketId;
+      if (!servicesByTicket.has(tid)) servicesByTicket.set(tid, []);
+      // Map for frontend
+      servicesByTicket.get(tid).push({
+        ...row,
+        ticketId: row.ticket_id || row.ticketId,
+        serviceId: row.service_id || row.serviceId,
+        serviceName: row.service_name || row.serviceName,
+        createdAt: row.created_at || row.createdAt
+      });
     });
 
     return tickets.map(t => ({
@@ -456,10 +483,17 @@ export class TicketModel {
   }
 
   static async getServices(ticketId) {
-    return await query(
-      'SELECT * FROM ticket_services WHERE ticketId = ? ORDER BY createdAt ASC',
+    const rows = await query(
+      'SELECT * FROM ticket_services WHERE ticket_id = ? ORDER BY created_at ASC',
       [ticketId]
     );
+    return rows.map(row => ({
+      ...row,
+      ticketId: row.ticket_id || row.ticketId,
+      serviceId: row.service_id || row.serviceId,
+      serviceName: row.service_name || row.serviceName,
+      createdAt: row.created_at || row.createdAt
+    }));
   }
 
   static async findAll(status = null) {
@@ -480,8 +514,24 @@ export class TicketModel {
 
     const rows = await query(sql, params);
     
-    // Convertir RowDataPacket en POJO simple pour éviter les problèmes de sérialisation
-    const pojos = rows.map(r => ({ ...r }));
+    // Convertir RowDataPacket en POJO simple et Mapper snake_case vers camelCase pour compatibilité Frontend
+    const pojos = rows.map(r => ({ 
+      ...r,
+      ticketNumber: r.ticketNumber || r.ticket_number,
+      patientId: r.patientId || r.patient_id,
+      serviceId: r.serviceId || r.service_id,
+      doctorId: r.doctorId || r.doctor_id,
+      patientName: r.patientName || r.patient_name,
+      patientAge: r.patientAge || r.patient_age,
+      patientGender: r.patientGender || r.patient_gender,
+      patientPhone: r.patientPhone || r.patient_phone,
+      patientAddress: r.patientAddress || r.patient_address,
+      serviceName: r.serviceName || r.service_name,
+      paymentMethod: r.paymentMethod || r.payment_method,
+      centerId: r.centerId || r.center_id,
+      createdAt: r.createdAt || r.created_at,
+      updatedAt: r.updatedAt || r.updated_at
+    }));
     return await this.attachServices(pojos);
   }
 
@@ -504,6 +554,7 @@ export class TicketModel {
       ticketNumber,
       serviceId,
       doctorId,
+      patientId,
       patientName,
       patientAge,
       patientGender,
@@ -542,13 +593,14 @@ export class TicketModel {
 
     await transaction(async (conn) => {
       await conn.query(
-        `INSERT INTO tickets (id, ticketNumber, serviceId, doctorId, patientName, patientAge, patientGender, patientPhone, patientAddress, serviceName, amount, paymentMethod, notes, status, centerId)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tickets (id, ticket_number, service_id, doctor_id, patient_id, patient_name, patient_age, patient_gender, patient_phone, patient_address, service_name, amount, payment_method, notes, status, center_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           ticketId,
           ticketNumber || `T-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`,
           primaryServiceId,
           doctorId || null,
+          patientId || null,
           patientName,
           patientAge,
           patientGender,
@@ -566,7 +618,7 @@ export class TicketModel {
       for (const svc of normalizedServices) {
         const linkId = `ts-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         await conn.query(
-          `INSERT INTO ticket_services (id, ticketId, serviceId, serviceName, price, quantity)
+          `INSERT INTO ticket_services (id, ticket_id, service_id, service_name, price, quantity)
            VALUES (?, ?, ?, ?, ?, ?)`,
           [
             linkId,
