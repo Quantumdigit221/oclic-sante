@@ -285,53 +285,67 @@ export async function initializeDatabase() {
         }
       }
     };
-    await addColumnIfMissing('tickets', 'patient_phone', 'patient_phone VARCHAR(50) AFTER patient_gender');
-    await addColumnIfMissing('tickets', 'patient_address', 'patient_address TEXT AFTER patient_phone');
-    await addColumnIfMissing('tickets', 'payment_method', 'payment_method VARCHAR(50) DEFAULT "CASH" AFTER amount');
-    await addColumnIfMissing('tickets', 'notes', 'notes TEXT AFTER payment_method');
-    await addColumnIfMissing('tickets', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER status');
 
-    await addColumnIfMissing('ticket_services', 'ticket_id', 'ticket_id VARCHAR(255) AFTER id');
-    await addColumnIfMissing('ticket_services', 'service_id', 'service_id VARCHAR(255) AFTER ticket_id');
-    await addColumnIfMissing('ticket_services', 'service_name', 'service_name VARCHAR(255) AFTER service_id');
-    await addColumnIfMissing('ticket_services', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+    async function runAsyncMigrations() {
+      // Tickets
+      await addColumnIfMissing('tickets', 'patient_phone', 'patient_phone VARCHAR(50) AFTER patient_gender');
+      await addColumnIfMissing('tickets', 'patient_address', 'patient_address TEXT AFTER patient_phone');
+      await addColumnIfMissing('tickets', 'payment_method', 'payment_method VARCHAR(50) DEFAULT "CASH" AFTER amount');
+      await addColumnIfMissing('tickets', 'notes', 'notes TEXT AFTER payment_method');
+      await addColumnIfMissing('tickets', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER status');
+      
+      // Ticket Services
+      await addColumnIfMissing('ticket_services', 'ticket_id', 'ticket_id VARCHAR(255) AFTER id');
+      await addColumnIfMissing('ticket_services', 'service_id', 'service_id VARCHAR(255) AFTER ticket_id');
+      await addColumnIfMissing('ticket_services', 'service_name', 'service_name VARCHAR(255) AFTER service_id');
+      await addColumnIfMissing('ticket_services', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+      
+      // Services
+      await addColumnIfMissing('services', 'description', 'description TEXT AFTER name');
+      await addColumnIfMissing('services', 'category', 'category VARCHAR(255) DEFAULT "Consultation" AFTER name');
+      await addColumnIfMissing('services', 'duration_minutes', 'duration_minutes INT DEFAULT 30 AFTER price');
+      await addColumnIfMissing('services', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER duration_minutes');
+      await addColumnIfMissing('services', 'is_active', 'is_active TINYINT(1) DEFAULT 1 AFTER center_id');
+      await addColumnIfMissing('services', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+      await addColumnIfMissing('services', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+      
+      // Patients
+      await addColumnIfMissing('patients', 'first_name', 'first_name VARCHAR(255) AFTER name');
+      await addColumnIfMissing('patients', 'last_name', 'last_name VARCHAR(255) AFTER first_name');
+      await addColumnIfMissing('patients', 'date_of_birth', 'date_of_birth DATE AFTER last_name');
+      await addColumnIfMissing('patients', 'phone_number', 'phone_number VARCHAR(20) AFTER phone');
+      await addColumnIfMissing('patients', 'phoneNumber', 'phoneNumber VARCHAR(20) AFTER phone_number');
+      await addColumnIfMissing('patients', 'birthDate', 'birthDate DATE AFTER dateOfBirth');
+      await addColumnIfMissing('patients', 'bloodGroup', 'bloodGroup VARCHAR(10) AFTER gender');
+      await addColumnIfMissing('patients', 'blood_group', 'blood_group VARCHAR(10) AFTER bloodGroup');
+      await addColumnIfMissing('patients', 'allergies', 'allergies TEXT AFTER blood_group');
+      await addColumnIfMissing('patients', 'emergencyContact', 'emergencyContact VARCHAR(255) AFTER address');
+      await addColumnIfMissing('patients', 'emergency_contact', 'emergency_contact VARCHAR(255) AFTER emergencyContact');
+      await addColumnIfMissing('patients', 'email', 'email VARCHAR(255) AFTER emergency_contact');
+      await addColumnIfMissing('patients', 'center_id', "center_id VARCHAR(255) DEFAULT 'center-001' AFTER last_name");
+      await addColumnIfMissing('patients', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+      await addColumnIfMissing('patients', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+      
+      // Medicines
+      await addColumnIfMissing('medicines', 'stock', 'stock INT DEFAULT 0 AFTER stock_quantity');
+      await addColumnIfMissing('medicines', 'generic_name', 'generic_name VARCHAR(255) AFTER name');
+      await addColumnIfMissing('medicines', 'description', 'description TEXT AFTER generic_name');
+      await addColumnIfMissing('medicines', 'category', "category VARCHAR(255) DEFAULT 'Général' AFTER description");
+      await addColumnIfMissing('medicines', 'unit', "unit VARCHAR(50) DEFAULT 'Boite' AFTER category");
+      await addColumnIfMissing('medicines', 'supplier', 'supplier VARCHAR(255) AFTER price');
+      await addColumnIfMissing('medicines', 'expiry_date', 'expiry_date DATE AFTER supplier');
+      await addColumnIfMissing('medicines', 'storage_conditions', 'storage_conditions VARCHAR(255) AFTER expiry_date');
+      await addColumnIfMissing('medicines', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+      
+      logToFile("ASYNC MIGRATIONS: Toutes les colonnes ont été vérifiées/ajoutées.");
+      console.log("✅ Toutes les colonnes ont été vérifiées/ajoutées en arrière-plan.");
 
-        await addColumnIfMissing('services', 'description', 'description TEXT AFTER name');
-    await addColumnIfMissing('services', 'category', 'category VARCHAR(255) DEFAULT "Consultation" AFTER name');
-    await addColumnIfMissing('services', 'duration_minutes', 'duration_minutes INT DEFAULT 30 AFTER price');
-    await addColumnIfMissing('services', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER duration_minutes');
-    await addColumnIfMissing('services', 'is_active', 'is_active TINYINT(1) DEFAULT 1 AFTER center_id');
-    await addColumnIfMissing('services', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
-    await addColumnIfMissing('services', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+      try { await query("UPDATE medicines SET stock = stock_quantity WHERE stock = 0 AND stock_quantity > 0"); } catch (e) { }
+      try { await query("UPDATE patients SET center_id = 'center-001' WHERE center_id IS NULL"); } catch (e) { }
+    }
     
-    await addColumnIfMissing('patients', 'first_name', 'first_name VARCHAR(255) AFTER name');
-    await addColumnIfMissing('patients', 'last_name', 'last_name VARCHAR(255) AFTER first_name');
-    await addColumnIfMissing('patients', 'date_of_birth', 'date_of_birth DATE AFTER last_name');
-    await addColumnIfMissing('patients', 'phone_number', 'phone_number VARCHAR(20) AFTER phone');
-    await addColumnIfMissing('patients', 'phoneNumber', 'phoneNumber VARCHAR(20) AFTER phone_number');
-    await addColumnIfMissing('patients', 'birthDate', 'birthDate DATE AFTER dateOfBirth');
-    await addColumnIfMissing('patients', 'bloodGroup', 'bloodGroup VARCHAR(10) AFTER gender');
-    await addColumnIfMissing('patients', 'blood_group', 'blood_group VARCHAR(10) AFTER bloodGroup');
-    await addColumnIfMissing('patients', 'allergies', 'allergies TEXT AFTER blood_group');
-    await addColumnIfMissing('patients', 'emergencyContact', 'emergencyContact VARCHAR(255) AFTER address');
-    await addColumnIfMissing('patients', 'emergency_contact', 'emergency_contact VARCHAR(255) AFTER emergencyContact');
-    await addColumnIfMissing('patients', 'email', 'email VARCHAR(255) AFTER emergency_contact');
-    await addColumnIfMissing('patients', 'center_id', "center_id VARCHAR(255) DEFAULT 'center-001' AFTER last_name");
-    await addColumnIfMissing('patients', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
-    await addColumnIfMissing('patients', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
-    
-    await addColumnIfMissing('medicines', 'stock', 'stock INT DEFAULT 0 AFTER stock_quantity');
-    await addColumnIfMissing('medicines', 'generic_name', 'generic_name VARCHAR(255) AFTER name');
-    await addColumnIfMissing('medicines', 'description', 'description TEXT AFTER generic_name');
-    await addColumnIfMissing('medicines', 'category', "category VARCHAR(255) DEFAULT 'Général' AFTER description");
-    await addColumnIfMissing('medicines', 'unit', "unit VARCHAR(50) DEFAULT 'Boite' AFTER category");
-    await addColumnIfMissing('medicines', 'supplier', 'supplier VARCHAR(255) AFTER price');
-    await addColumnIfMissing('medicines', 'expiry_date', 'expiry_date DATE AFTER supplier');
-    await addColumnIfMissing('medicines', 'storage_conditions', 'storage_conditions VARCHAR(255) AFTER expiry_date');
-    await addColumnIfMissing('medicines', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
-    
-    try { await query("UPDATE medicines SET stock = stock_quantity WHERE stock = 0 AND stock_quantity > 0"); } catch (e) { }
-    try { await query("UPDATE patients SET center_id = 'center-001' WHERE center_id IS NULL"); } catch (e) { }
+    // On lance les migrations lourdes en arrière-plan pour ne pas bloquer le démarrage
+    runAsyncMigrations().catch(e => console.error('Migration error:', e));
 
     // Données par défaut (uniquement si les tables sont vides)
     const servicesCount = await query("SELECT COUNT(*) as count FROM services");
