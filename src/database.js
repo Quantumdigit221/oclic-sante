@@ -10,17 +10,32 @@ import path from 'path';
 dotenv.config();
 
 // Configuration de la base de données
-const databaseUrl = process.env.DATABASE_URL;
-
 // On construit l'objet de configuration finale
-const dbConfig = databaseUrl ? {
+// Sur Hostinger, on privilégie les variables DB_HOST/DB_NAME si elles sont définies
+const dbConfig = (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') ? {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  dbName: process.env.DB_NAME,
+  charset: 'utf8mb4',
+  timezone: '+00:00',
+  acquireTimeout: 10000,
+  timeout: 10000,
+  connectionLimit: 10,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  ssl: (process.env.DB_SSL === 'true') ? { rejectUnauthorized: false } : undefined
+} : (databaseUrl ? {
   uri: databaseUrl,
+  dbName: databaseUrl.split('/').pop().split('?')[0],
   ssl: (databaseUrl.includes('render.com') || databaseUrl.includes('hstgr.io') || process.env.DB_SSL === 'true') 
        ? { rejectUnauthorized: false } 
        : undefined
 } : {
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: process.env.DB_PORT || 3306,
+  host: '127.0.0.1',
+  port: 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'oclic_sante_db',
@@ -32,20 +47,25 @@ const dbConfig = databaseUrl ? {
   connectionLimit: 10,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  ssl: (process.env.DB_HOST && (process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1') || process.env.DB_SSL === 'true') 
-       ? { rejectUnauthorized: false } 
-       : undefined
-};
+  ssl: undefined
+});
 
 // Pool de connexions
 let pool;
 let dbErrorLog = null;
 
-const logFile = path.join(process.cwd(), 'server-err.log');
+const __filename_db = fileURLToPath(import.meta.url);
+const __dirname_db = path.dirname(__filename_db);
+const logFile = path.join(__dirname_db, '../server-err.log');
+
 function logToFile(msg) {
   try {
-    fs.appendFileSync(logFile, `[DB ${new Date().toISOString()}] ${msg}\n`);
-  } catch (e) { /* ignore */ }
+    const time = new Date().toISOString();
+    fs.appendFileSync(logFile, `[${time}] ${msg}\n`);
+    console.log(`[LOG] ${msg}`);
+  } catch (e) {
+    console.error('Failed to write to log file:', e.message);
+  }
 }
 
 export function getDbErrorLog() {

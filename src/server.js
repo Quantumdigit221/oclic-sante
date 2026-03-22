@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dns from 'dns';
 
@@ -68,7 +69,12 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use((req, res, next) => {
-  console.log(`[REQ DB] ${req.method} ${req.url}`);
+  const msg = `[REQ] ${req.method} ${req.url}`;
+  try {
+    const logPath = path.join(__dirname, '../server-err.log');
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch (e) {}
+  console.log(msg);
   next();
 });
 
