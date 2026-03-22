@@ -317,10 +317,13 @@ export class PatientModel {
     const rows = await query(q);
     return rows.map(r => ({
       ...r,
+      name: r.name || `${r.firstName || ''} ${r.lastName || ''}`.trim() || 'Inconnu',
       firstName: r.firstName || r.first_name || '',
       lastName: r.lastName || r.last_name || '',
-      dateOfBirth: r.dateOfBirth || r.date_of_birth,
-      phoneNumber: r.phoneNumber || r.phone_number || r.phone || ''
+      phoneNumber: r.phoneNumber || r.phone_number || r.phone || '',
+      phone: r.phone || r.phoneNumber || r.phone_number || '',
+      address: r.address || '',
+      gender: r.gender || 'M'
     }));
   }
   static async findById(id) {
@@ -363,7 +366,10 @@ export class TicketModel {
       patientName: r.patient_name || r.patientName || 'Inconnu',
       patientAge: r.patient_age || r.patientAge || 0,
       patientGender: r.patient_gender || r.patientGender || 'M',
-      serviceName: r.service_name || r.serviceName || 'Consultation'
+      serviceName: r.service_name || r.serviceName || 'Consultation',
+      patientPhone: r.patient_phone || r.patientPhone || '',
+      patientAddress: r.patient_address || r.patientAddress || '',
+      status: r.status || 'WAITING'
     }));
   }
   static async findById(id) {
@@ -397,11 +403,14 @@ export class MedicineModel {
     return rows.map(r => ({
       ...r,
       name: r.name || 'Médicament sans nom',
-      genericName: r.genericName || r.generic_name || '',
+      genericName: r.genericName || r.generic_name || r.dci || '',
+      dci: r.dci || r.generic_name || '',
       category: r.category || 'Général',
-      stock: r.stock_quantity !== undefined ? r.stock_quantity : (r.stock || 0),
-      minStock: r.min_stock_alert !== undefined ? r.min_stock_alert : (r.minStock || 10),
-      stockQuantity: r.stock_quantity !== undefined ? r.stock_quantity : (r.stock || 0),
+      form: r.form || '',
+      stock: r.stock !== undefined ? r.stock : (r.stock_quantity !== undefined ? r.stock_quantity : 0),
+      stock_quantity: r.stock_quantity !== undefined ? r.stock_quantity : (r.stock || 0),
+      minStock: r.minStock !== undefined ? r.minStock : (r.min_stock_alert !== undefined ? r.min_stock_alert : 10),
+      min_stock_alert: r.min_stock_alert !== undefined ? r.min_stock_alert : (r.minStock || 10),
       price: parseFloat(r.price || 0)
     }));
   }
@@ -458,8 +467,11 @@ export class ConsultationModel {
       doctorId: r.doctor_id,
       doctorName: r.doctor_name || 'Inconnu',
       patientName: r.patient_name || 'Inconnu',
-      bloodPressure: r.blood_pressure,
-      labOrders: r.lab_orders
+      diagnosis: r.diagnosis || '',
+      symptoms: r.symptoms || '',
+      bloodPressure: r.blood_pressure || '',
+      notes: r.notes || '',
+      labOrders: r.lab_orders || '[]'
     }));
   }
   static async findById(id) {
