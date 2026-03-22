@@ -17,7 +17,7 @@ const dbConfig = databaseUrl ? {
        ? { rejectUnauthorized: false } 
        : undefined
 } : {
-  host: process.env.DB_HOST || '127.0.0.1',
+  host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
@@ -34,10 +34,16 @@ const dbConfig = databaseUrl ? {
 
 // Pool de connexions
 let pool;
+let dbErrorLog = null;
+
+export function getDbErrorLog() {
+  return dbErrorLog;
+}
 
 // Initialisation de la base de données
 export async function initializeDatabase() {
   try {
+    dbErrorLog = null;
     // Créer le pool de connexions (mysql2 supporte soit une chaîne URI soit un objet config)
     if (typeof dbConfig === 'string' || (dbConfig && dbConfig.uri)) {
       const uri = typeof dbConfig === 'string' ? dbConfig : dbConfig.uri;
@@ -301,6 +307,7 @@ export async function initializeDatabase() {
     console.log('✅ Structure de la base de données prête');
     return true;
   } catch (error) {
+    dbErrorLog = error.message;
     console.error('❌ Erreur d\'initialisation de la base de données:', error.message);
     return false;
   }
@@ -901,5 +908,6 @@ export default {
   MedicineModel,
   ConsultationModel,
   SettingsModel,
-  LabResultModel
+  LabResultModel,
+  getDbErrorLog
 };

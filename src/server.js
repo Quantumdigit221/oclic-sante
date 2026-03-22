@@ -982,12 +982,12 @@ app.get('*', (req, res) => {
 });
 // Initialisation au démarrage
 async function startServer() {
+  dbConnected = await initializeDatabase();
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Serveur O'CLIC SANTE DB démarré sur port ${PORT}`);
+    console.log(`🗄️  Statut Base de Données: ${dbConnected ? 'CONNECTÉE' : 'ÉCHEC (Mode mémoire)'}`);
   });
-
-  dbConnected = await initializeDatabase();
-  console.log(`🗄️  Statut Base de Données: ${dbConnected ? 'CONNECTÉE' : 'ÉCHEC (Mode mémoire)'}`);
 }
 
 startServer();
