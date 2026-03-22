@@ -37,6 +37,8 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
+let dbConnected = false;
+
 // Route de diagnostic de la base de données
 app.get('/debug-db', async (req, res) => {
   try {
@@ -118,8 +120,6 @@ app.get('/debug-db', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'o_clic_sante_jwt_secret_very_long_and_secure_2024';
-
-let dbConnected = false;
 
 // Middleware
 const allowedOrigins = [
