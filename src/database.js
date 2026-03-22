@@ -27,10 +27,10 @@ const dbConfig = (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') ? 
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   ssl: (process.env.DB_SSL === 'true') ? { rejectUnauthorized: false } : undefined
-} : (databaseUrl ? {
-  uri: databaseUrl,
-  dbName: databaseUrl.split('/').pop().split('?')[0],
-  ssl: (databaseUrl.includes('render.com') || databaseUrl.includes('hstgr.io') || process.env.DB_SSL === 'true') 
+} : (process.env.DATABASE_URL ? {
+  uri: process.env.DATABASE_URL,
+  dbName: process.env.DATABASE_URL.split('/').pop().split('?')[0],
+  ssl: (process.env.DATABASE_URL.includes('render.com') || process.env.DATABASE_URL.includes('hstgr.io') || process.env.DB_SSL === 'true') 
        ? { rejectUnauthorized: false } 
        : undefined
 } : {
