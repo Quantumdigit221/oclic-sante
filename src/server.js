@@ -995,7 +995,15 @@ async function startServer() {
     console.log(`🚀 Serveur O'CLIC SANTE démarré sur port ${PORT}`);
   });
 
-  dbConnected = await initializeDatabase();
+  // Timeout de 10s pour l'initialisation DB pour éviter de bloquer Passenger
+  try {
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout DB Init')), 10000));
+    dbConnected = await Promise.race([initializeDatabase(), timeout]);
+  } catch (e) {
+    dbConnected = false;
+    console.error('⚠️ DB Init a pris trop de temps ou a échoué:', e.message);
+  }
+
   console.log(`🗄️  Statut Base de Données: ${dbConnected ? 'CONNECTÉE' : 'ÉCHEC (Mode mémoire)'}`);
 }
 

@@ -24,6 +24,7 @@ const dbConfig = databaseUrl ? {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'oclic_sante_db',
+  dbName: process.env.DB_NAME || 'oclic_sante_db',
   charset: 'utf8mb4',
   timezone: '+00:00',
   acquireTimeout: 10000,
@@ -250,13 +251,20 @@ export async function initializeDatabase() {
       )
     `);
 
-    // OPTIMISATION : On charge TOUT le schéma existant en UNE SEULE REQUÊTE
-    // Cela évite de faire 25+ requêtes INFORMATION_SCHEMA successives qui causent des 503 sur Hostinger.
-    logToFile('CACHE: Chargement du schéma complet...');
+    // On détecte le nom de la base pour la requête de schéma
+    let dbName = dbConfig.dbName || dbConfig.database;
+    if (!dbName && dbConfig.uri) {
+      // Tenter d'extraire de l'URI (format: mysql://user:pass@host/dbname)
+      const parts = dbConfig.uri.split('/');
+      dbName = parts[parts.length - 1].split('?')[0];
+    }
+    logToFile(`SCHEMA: Chargement du cache pour ${dbName || 'INCONNUE'}...`);
+
     const schemaRows = await query(
       `SELECT TABLE_NAME, COLUMN_NAME 
        FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE()`
+       WHERE TABLE_SCHEMA = ?`,
+      [dbName || 'DATABASE()']
     );
     const schemaCache = new Set(schemaRows.map(r => `${r.TABLE_NAME}.${r.COLUMN_NAME}`));
 
