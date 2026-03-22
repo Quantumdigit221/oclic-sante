@@ -126,7 +126,7 @@ export async function initializeDatabase() {
       try { await query(`ALTER TABLE tickets ADD INDEX idx_t_center (center_id)`); } catch (e) { }
     }
 
-    runAsyncMigrations().catch(e => console.error('Migration error:', e));
+    // runAsyncMigrations().catch(e => console.error('Migration error:', e));
 
     logToFile("INIT: OK");
     return true;
