@@ -407,10 +407,10 @@ export class MedicineModel {
       dci: r.dci || r.generic_name || '',
       category: r.category || 'Général',
       form: r.form || '',
-      stock: r.stock !== undefined ? r.stock : (r.stock_quantity !== undefined ? r.stock_quantity : 0),
-      stock_quantity: r.stock_quantity !== undefined ? r.stock_quantity : (r.stock || 0),
-      minStock: r.minStock !== undefined ? r.minStock : (r.min_stock_alert !== undefined ? r.min_stock_alert : 10),
-      min_stock_alert: r.min_stock_alert !== undefined ? r.min_stock_alert : (r.minStock || 10),
+      stock: r.stock_quantity || r.stock || 0,
+      stock_quantity: r.stock_quantity || r.stock || 0,
+      minStock: r.min_stock_alert || r.minStock || 10,
+      min_stock_alert: r.min_stock_alert || r.minStock || 10,
       price: parseFloat(r.price || 0)
     }));
   }
