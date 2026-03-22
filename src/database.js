@@ -167,6 +167,50 @@ export async function initializeDatabase() {
       updated_by VARCHAR(255),
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS consultations (
+      id VARCHAR(255) PRIMARY KEY,
+      ticket_id VARCHAR(255),
+      patient_id VARCHAR(255),
+      doctor_id VARCHAR(255),
+      doctor_name VARCHAR(255),
+      patient_name VARCHAR(255),
+      temperature VARCHAR(50),
+      weight VARCHAR(50),
+      blood_pressure VARCHAR(50),
+      pulse VARCHAR(50),
+      diagnosis TEXT,
+      symptoms TEXT,
+      prescription TEXT,
+      lab_orders TEXT,
+      notes TEXT,
+      center_id VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS lab_results (
+      id VARCHAR(255) PRIMARY KEY,
+      test_name VARCHAR(255),
+      category VARCHAR(255),
+      patient_id VARCHAR(255),
+      patient_name VARCHAR(255),
+      doctor_id VARCHAR(255),
+      doctor_name VARCHAR(255),
+      result TEXT,
+      status VARCHAR(50),
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS sales (
+      id VARCHAR(255) PRIMARY KEY,
+      patient_name VARCHAR(255),
+      quantity INT,
+      unit_price DECIMAL(10,2),
+      total DECIMAL(10,2),
+      status VARCHAR(50),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
 
     // FORCER LES COLONNES VITALES (Si les tables existaient déjà en version light)
     const vitalCols = [
@@ -237,6 +281,18 @@ export class UserModel {
   static async findById(id) {
     const res = await query('SELECT * FROM users WHERE id = ?', [id]);
     return res[0] || null;
+  }
+  static async findByEmail(email) {
+    const res = await query('SELECT * FROM users WHERE email = ?', [email]);
+    return res;
+  }
+  static async create(data) {
+    const id = data.id || `u-${Date.now()}`;
+    await query(
+      'INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)',
+      [id, data.name, data.email, data.password || data.passwordHash, data.role || 'USER']
+    );
+    return await this.findById(id);
   }
 }
 
@@ -309,6 +365,17 @@ export class TicketModel {
     );
     return await this.findById(tid);
   }
+  static async updateStatus(id, status, doctorId = null) {
+    if (doctorId) {
+      await query('UPDATE tickets SET status = ?, doctor_id = ? WHERE id = ?', [status, doctorId, id]);
+    } else {
+      await query('UPDATE tickets SET status = ? WHERE id = ?', [status, id]);
+    }
+    return await this.findById(id);
+  }
+  static async getServices(ticketId) {
+    return await query('SELECT * FROM ticket_services WHERE ticket_id = ?', [ticketId]);
+  }
 }
 
 export class MedicineModel {
@@ -344,21 +411,134 @@ export class ServiceModel {
   }
 }
 export class ConsultationModel {
-  static async findAll() { return []; }
-  static async findById(id) { return null; }
-  static async create(data) { return { id: `cons-${Date.now()}`, ...data }; }
+  static async findAll(filters = {}) {
+    let q = 'SELECT * FROM consultations';
+    const params = [];
+    const where = [];
+    if (filters.patientId) { where.push('patient_id = ?'); params.push(filters.patientId); }
+    if (filters.patient_id) { where.push('patient_id = ?'); params.push(filters.patient_id); }
+    if (filters.doctorId) { where.push('doctor_id = ?'); params.push(filters.doctorId); }
+    if (filters.doctor_id) { where.push('doctor_id = ?'); params.push(filters.doctor_id); }
+    
+    if (where.length > 0) q += ' WHERE ' + where.join(' AND ');
+    q += ' ORDER BY created_at DESC';
+    
+    const rows = await query(q, params);
+    return rows.map(r => ({
+      ...r,
+      ticketId: r.ticket_id,
+      patientId: r.patient_id,
+      doctorId: r.doctor_id,
+      doctorName: r.doctor_name,
+      patientName: r.patient_name,
+      bloodPressure: r.blood_pressure,
+      labOrders: r.lab_orders
+    }));
+  }
+  static async findById(id) {
+    const res = await query('SELECT * FROM consultations WHERE id = ?', [id]);
+    if (!res[0]) return null;
+    const r = res[0];
+    return {
+      ...r,
+      ticketId: r.ticket_id,
+      patientId: r.patient_id,
+      doctorId: r.doctor_id,
+      doctorName: r.doctor_name,
+      patientName: r.patient_name,
+      bloodPressure: r.blood_pressure,
+      labOrders: r.lab_orders
+    };
+  }
+  static async create(d) {
+    const id = d.id || `consult-${Date.now()}`;
+    await query(
+      `INSERT INTO consultations (id, ticket_id, patient_id, doctor_id, doctor_name, patient_name, temperature, weight, blood_pressure, pulse, diagnosis, symptoms, prescription, lab_orders, notes, center_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, d.ticketId || d.ticket_id, d.patientId || d.patient_id, d.doctorId || d.doctor_id, d.doctorName || d.doctor_name, d.patientName || d.patient_name, d.temperature, d.weight, d.bloodPressure || d.blood_pressure, d.pulse, d.diagnosis, d.symptoms, d.prescription, d.labOrders || d.lab_orders, d.notes, d.centerId || d.center_id]
+    );
+    return await this.findById(id);
+  }
 }
 export class SettingsModel {
-  static async getAll() { return {}; }
-  static async get(key, fallback = null) { return fallback; }
-  static async set(key, val) { return true; }
+  static async getAll() {
+    const rows = await query('SELECT setting_key, setting_value FROM settings');
+    const settings = {};
+    rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
+    return settings;
+  }
+  static async get(key, fallback = null) {
+    const res = await query('SELECT setting_value FROM settings WHERE setting_key = ?', [key]);
+    return (res && res.length > 0) ? res[0].setting_value : fallback;
+  }
+  static async set(key, val) {
+    const value = typeof val === 'object' ? JSON.stringify(val) : String(val);
+    await query(
+      `INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) 
+       ON DUPLICATE KEY UPDATE setting_value = ?`,
+      [key, value, value]
+    );
+    return true;
+  }
 }
 export class LabResultModel {
-  static async findAll() { return []; }
-  static async create(data) { return { id: `lab-${Date.now()}`, ...data }; }
+  static async findAll(filters = {}) {
+    let q = 'SELECT * FROM lab_results';
+    const params = [];
+    const where = [];
+    if (filters.patientId) { where.push('patient_id = ?'); params.push(filters.patientId); }
+    if (where.length > 0) q += ' WHERE ' + where.join(' AND ');
+    q += ' ORDER BY created_at DESC';
+    const rows = await query(q, params);
+    return rows.map(r => ({
+      ...r,
+      testName: r.test_name,
+      patientId: r.patient_id,
+      patientName: r.patient_name,
+      doctorId: r.doctor_id,
+      doctorName: r.doctor_name
+    }));
+  }
+  static async create(d) {
+    const id = d.id || `lab-${Date.now()}`;
+    await query(
+      `INSERT INTO lab_results (id, test_name, category, patient_id, patient_name, doctor_id, doctor_name, result, status, notes) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, d.testName || d.test_name, d.category, d.patientId || d.patient_id, d.patientName || d.patient_name, d.doctorId || d.doctor_id, d.doctorName || d.doctor_name, d.result, d.status, d.notes]
+    );
+    return await this.findById(id);
+  }
+  static async findById(id) {
+    const res = await query('SELECT * FROM lab_results WHERE id = ?', [id]);
+    if (!res[0]) return null;
+    const r = res[0];
+    return {
+      ...r,
+      testName: r.test_name,
+      patientId: r.patient_id,
+      patientName: r.patient_name,
+      doctorId: r.doctor_id,
+      doctorName: r.doctor_name
+    };
+  }
+  static async update(id, data) {
+    const updates = []; const params = [];
+    Object.keys(data).forEach(k => {
+      const dbKey = k === 'testName' ? 'test_name' : (k === 'patientId' ? 'patient_id' : (k === 'patientName' ? 'patient_name' : (k === 'doctorId' ? 'doctor_id' : (k === 'doctorName' ? 'doctor_name' : k))));
+      if (['test_name', 'category', 'patient_id', 'patient_name', 'doctor_id', 'doctor_name', 'result', 'status', 'notes'].includes(dbKey)) {
+        updates.push(`${dbKey} = ?`); params.push(data[k]);
+      }
+    });
+    if (updates.length > 0) {
+      params.push(id);
+      await query(`UPDATE lab_results SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+    return await this.findById(id);
+  }
 }
 export class CenterModel {
   static async findById(id) { return { id: "center-001", name: "O'CLIC SANTE" }; }
+  static async findAll() { return [{ id: "center-001", name: "O'CLIC SANTE" }]; }
 }
 
 export default { initializeDatabase, query, transaction, UserModel, TicketModel, PatientModel, MedicineModel };
