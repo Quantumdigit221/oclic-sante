@@ -211,6 +211,19 @@ export async function initializeDatabase() {
       status VARCHAR(50),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    
+    await query(`CREATE TABLE IF NOT EXISTS centers (
+      id VARCHAR(255) PRIMARY KEY,
+      name VARCHAR(255),
+      address TEXT,
+      phone VARCHAR(50),
+      email VARCHAR(255),
+      director_name VARCHAR(255),
+      rnis VARCHAR(255),
+      capacity INT,
+      pispi_alias VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
 
     // FORCER LES COLONNES VITALES (Si les tables existaient déjà en version light)
     const vitalCols = [
@@ -546,8 +559,22 @@ export class LabResultModel {
   }
 }
 export class CenterModel {
-  static async findById(id) { return { id: "center-001", name: "O'CLIC SANTE" }; }
-  static async findAll() { return [{ id: "center-001", name: "O'CLIC SANTE" }]; }
+  static async findAll() {
+    return await query("SELECT * FROM centers ORDER BY created_at DESC");
+  }
+  static async findById(id) {
+    const res = await query('SELECT * FROM centers WHERE id = ?', [id]);
+    return res[0] || null;
+  }
+  static async create(d) {
+    const id = d.id || `center-${Date.now()}`;
+    await query(
+      `INSERT INTO centers (id, name, address, phone, email, director_name, rnis, capacity, pispi_alias) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, d.name, d.address, d.phone, d.email, d.directorName || d.director_name, d.rnis, d.capacity || 0, d.pispiAlias || d.pispi_alias]
+    );
+    return await this.findById(id);
+  }
 }
 
 export default { initializeDatabase, query, transaction, UserModel, TicketModel, PatientModel, MedicineModel };
