@@ -168,7 +168,25 @@ export async function initializeDatabase() {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`);
 
-    // Migrations en arrière-plan
+    // FORCER LES COLONNES VITALES (Si les tables existaient déjà en version light)
+    const vitalCols = [
+      ['patients', 'firstName', 'VARCHAR(255)'],
+      ['patients', 'lastName', 'VARCHAR(255)'],
+      ['patients', 'age', 'INT'],
+      ['patients', 'gender', 'VARCHAR(10)'],
+      ['patients', 'phone', 'VARCHAR(50)'],
+      ['patients', 'address', 'TEXT'],
+      ['tickets', 'patient_id', 'VARCHAR(255)'],
+      ['tickets', 'amount', 'DECIMAL(10,2) DEFAULT 0.00'],
+      ['tickets', 'payment_method', 'VARCHAR(50) DEFAULT "CASH"'],
+      ['medicines', 'generic_name', 'VARCHAR(255)'],
+      ['medicines', 'stock_quantity', 'INT DEFAULT 0']
+    ];
+    for (const [t, c, d] of vitalCols) {
+      try { await query(`ALTER TABLE ${t} ADD COLUMN ${c} ${d}`); } catch(e) {}
+    }
+
+    // Migrations en arrière-plan (le reste)
     async function runAsyncMigrations() {
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
       await sleep(5000);
