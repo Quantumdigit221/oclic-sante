@@ -531,11 +531,12 @@ export class LabResultModel {
     const rows = await query(q, params);
     return rows.map(r => ({
       ...r,
-      testName: r.test_name,
-      patientId: r.patient_id,
-      patientName: r.patient_name,
-      doctorId: r.doctor_id,
-      doctorName: r.doctor_name
+      testName: r.test_name || r.testName || 'Examen sans nom',
+      patientId: r.patient_id || r.patientId || '',
+      patientName: r.patient_name || r.patientName || 'Inconnu',
+      doctorId: r.doctor_id || r.doctorId || '',
+      doctorName: r.doctor_name || r.doctorName || 'Inconnu',
+      status: r.status || 'PENDING'
     }));
   }
   static async create(d) {
