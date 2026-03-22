@@ -856,14 +856,27 @@ export class MedicineModel {
   }
 
   static async create(medicineData) {
-    const { id, name, genericName, description, category, unit, stockQuantity, minStockAlert, price, supplier, expiryDate, storageConditions } = medicineData;
+    const { 
+      id, name, genericName, description, category, unit, 
+      stockQuantity, stock, minStockAlert, minStock,
+      price, supplier, expiryDate, storageConditions 
+    } = medicineData;
+
+    const mid = id || `med-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+    const finalStock = parseInt(stockQuantity || stock || 0);
+    const finalMinStock = parseInt(minStockAlert || minStock || 10);
 
     await query(`
       INSERT INTO medicines (id, name, generic_name, description, category, unit, stock_quantity, min_stock_alert, price, supplier, expiry_date, storage_conditions)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [id, name, genericName, description, category, unit, stockQuantity, minStockAlert, price, supplier, expiryDate, storageConditions]);
+    `, [
+      mid, name, genericName || null, description || null, 
+      category || 'Général', unit || 'Unité', 
+      finalStock, finalMinStock, parseFloat(price) || 0, 
+      supplier || null, expiryDate || null, storageConditions || null
+    ]);
 
-    return await this.findById(id);
+    return await this.findById(mid);
   }
 
   static async updateStock(id, quantity) {
