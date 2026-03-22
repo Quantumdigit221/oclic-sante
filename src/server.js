@@ -46,8 +46,19 @@ app.get('/debug-db', async (req, res) => {
     
     if (dbConnected) {
       dbStatus = 'CONNECTED';
-      const [rows] = await query('SELECT DATABASE() as db, USER() as user, NOW() as time');
-      dbDetails = rows;
+      // TEST D'ÉCRITURE REEL
+      const testId = 'test-' + Date.now();
+      await query("INSERT INTO patients (id, name, firstName) VALUES (?, 'DIAGNOSTIC PROBE', 'TEST')", [testId]);
+      const [verify] = await query("SELECT * FROM patients WHERE id = ?", [testId]);
+      dbDetails = {
+        verifyWriteSuccess: !!verify,
+        insertedId: testId,
+        database: (await query('SELECT DATABASE() as db'))[0].db,
+        user: (await query('SELECT USER() as user'))[0].user,
+        now: new Date().toISOString()
+      };
+      // Nettoyage (on laisse si on veut vérifier à l'œil nu)
+      // await query("DELETE FROM patients WHERE id = ?", [testId]);
     } else {
       dbStatus = 'DISCONNECTED / MEMORY MODE';
     }
