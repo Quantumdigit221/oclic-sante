@@ -396,8 +396,13 @@ export class MedicineModel {
     const rows = await query('SELECT * FROM medicines ORDER BY name');
     return rows.map(r => ({
       ...r,
+      name: r.name || 'Médicament sans nom',
       genericName: r.genericName || r.generic_name || '',
-      stockQuantity: r.stock_quantity || r.stockQuantity || r.stock || 0
+      category: r.category || 'Général',
+      stock: r.stock_quantity !== undefined ? r.stock_quantity : (r.stock || 0),
+      minStock: r.min_stock_alert !== undefined ? r.min_stock_alert : (r.minStock || 10),
+      stockQuantity: r.stock_quantity !== undefined ? r.stock_quantity : (r.stock || 0),
+      price: parseFloat(r.price || 0)
     }));
   }
   static async findById(id) {

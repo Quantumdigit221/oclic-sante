@@ -424,10 +424,10 @@ app.post('/api/services', async (req, res) => {
 // Medicines
 app.get('/api/medicines', async (req, res) => {
   try {
-    if (!dbConnected) return res.json([]);
-    const medicines = await MedicineModel.findAll();
+    const medicines = dbConnected ? await MedicineModel.findAll() : [];
     res.json(medicines);
   } catch (error) {
+    console.error('[API] GET /api/medicines:', error.message);
     res.json([]);
   }
 });
@@ -753,24 +753,6 @@ app.post('/api/patients', async (req, res) => {
   }
 });
 
-// Médicaments
-app.get('/api/medicines', async (req, res) => {
-  try {
-    // Retourner TOUS les médicaments triés par les plus récents
-    const medicines = dbConnected ? await query('SELECT * FROM medicines ORDER BY created_at DESC') : [];
-    const mapped = medicines.map(m => ({
-      ...m,
-      stock: m.stock_quantity !== undefined ? m.stock_quantity : (m.stock || 0),
-      minStock: m.min_stock_alert !== undefined ? m.min_stock_alert : (m.minStock || 10),
-      stock_quantity: m.stock_quantity !== undefined ? m.stock_quantity : (m.stock || 0),
-      min_stock_alert: m.min_stock_alert !== undefined ? m.min_stock_alert : (m.minStock || 10)
-    }));
-    res.json(mapped);
-  } catch (error) {
-    console.error('[medicines GET]:', error.message);
-    res.json([]);
-  }
-});
 
 app.post('/api/medicines', async (req, res) => {
   try {
