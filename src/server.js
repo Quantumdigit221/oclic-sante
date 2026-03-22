@@ -1235,21 +1235,20 @@ app.get('*', (req, res) => {
 });
 // Initialisation au démarrage
 async function startServer() {
-  // BIND THE PORT IMMEDIATELY before DB init to satisfy Hostinger Passenger
+  // BIND THE PORT IMMEDIATELY to avoid Passenger 503 (it waits for the port to listen)
   app.listen(PORT, () => {
     console.log(`🚀 Serveur O'CLIC SANTE démarré sur port ${PORT}`);
   });
 
-  // Timeout de 10s pour l'initialisation DB pour éviter de bloquer Passenger
-  try {
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout DB Init')), 10000));
-    dbConnected = await Promise.race([initializeDatabase(), timeout]);
-  } catch (e) {
+  // DB init en arrière-plan : ne bloque PAS le démarrage du serveur
+  initializeDatabase().then(success => {
+    dbConnected = success;
+    console.log(`🗄️  Statut Base de Données: ${dbConnected ? 'CONNECTÉE' : 'ÉCHEC (Mode mémoire)'}`);
+  }).catch(e => {
     dbConnected = false;
-    console.error('⚠️ DB Init a pris trop de temps ou a échoué:', e.message);
-  }
-
-  console.log(`🗄️  Statut Base de Données: ${dbConnected ? 'CONNECTÉE' : 'ÉCHEC (Mode mémoire)'}`);
+    console.error('⚠️ DB Init Crash en arrière-plan:', e.message);
+  });
 }
 
 startServer();
+
