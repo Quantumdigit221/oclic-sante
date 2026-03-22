@@ -250,24 +250,26 @@ export async function initializeDatabase() {
       )
     `);
 
-    // Corrections de schéma (idempotentes)
-    const columnExists = async (table, column) => {
-      try {
-        const rows = await query(
-          `SELECT COUNT(*) as count
-           FROM INFORMATION_SCHEMA.COLUMNS
-           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-          [table, column]
-        );
-        return rows && rows[0] && rows[0].count > 0;
-      } catch (e) {
-        return false;
-      }
+    // OPTIMISATION : On charge TOUT le schéma existant en UNE SEULE REQUÊTE
+    // Cela évite de faire 25+ requêtes INFORMATION_SCHEMA successives qui causent des 503 sur Hostinger.
+    logToFile('CACHE: Chargement du schéma complet...');
+    const schemaRows = await query(
+      `SELECT TABLE_NAME, COLUMN_NAME 
+       FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE()`
+    );
+    const schemaCache = new Set(schemaRows.map(r => `${r.TABLE_NAME}.${r.COLUMN_NAME}`));
+
+    const columnExists = (table, column) => {
+      return schemaCache.has(`${table}.${column}`);
     };
+
     const addColumnIfMissing = async (table, column, ddl) => {
-      if (!(await columnExists(table, column))) {
+      if (!columnExists(table, column)) {
         try {
           await query(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+          // On met à jour le cache pour les appels suivants au cas où
+          schemaCache.add(`${table}.${column}`);
         } catch (e) {
           console.warn(`[DB] Could not add column ${column} to ${table}:`, e.message);
         }
@@ -299,6 +301,11 @@ export async function initializeDatabase() {
     await addColumnIfMissing('patients', 'center_id', "center_id VARCHAR(255) DEFAULT 'center-001' AFTER last_name");
     await addColumnIfMissing('patients', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
     await addColumnIfMissing('patients', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    
+    await addColumnIfMissing('medicines', 'stock', 'stock INT DEFAULT 0 AFTER stock_quantity');
+    await addColumnIfMissing('medicines', 'minStock', 'minStock INT DEFAULT 10 AFTER min_stock_alert');
+    try { await query("UPDATE medicines SET stock = stock_quantity WHERE stock = 0 AND stock_quantity > 0"); } catch (e) { }
+    try { await query("UPDATE medicines SET minStock = min_stock_alert WHERE minStock = 10 AND min_stock_alert > 0"); } catch (e) { }
     try { await query("UPDATE patients SET centerId = 'center-001' WHERE centerId IS NULL"); } catch (e) { }
     try { await query("UPDATE patients SET phoneNumber = phone WHERE phoneNumber IS NULL AND phone IS NOT NULL"); } catch (e) { }
 
