@@ -308,6 +308,14 @@ export async function initializeDatabase() {
     await addColumnIfMissing('patients', 'last_name', 'last_name VARCHAR(255) AFTER first_name');
     await addColumnIfMissing('patients', 'date_of_birth', 'date_of_birth DATE AFTER last_name');
     await addColumnIfMissing('patients', 'phone_number', 'phone_number VARCHAR(20) AFTER phone');
+    await addColumnIfMissing('patients', 'phoneNumber', 'phoneNumber VARCHAR(20) AFTER phone_number');
+    await addColumnIfMissing('patients', 'birthDate', 'birthDate DATE AFTER dateOfBirth');
+    await addColumnIfMissing('patients', 'bloodGroup', 'bloodGroup VARCHAR(10) AFTER gender');
+    await addColumnIfMissing('patients', 'blood_group', 'blood_group VARCHAR(10) AFTER bloodGroup');
+    await addColumnIfMissing('patients', 'allergies', 'allergies TEXT AFTER blood_group');
+    await addColumnIfMissing('patients', 'emergencyContact', 'emergencyContact VARCHAR(255) AFTER address');
+    await addColumnIfMissing('patients', 'emergency_contact', 'emergency_contact VARCHAR(255) AFTER emergencyContact');
+    await addColumnIfMissing('patients', 'email', 'email VARCHAR(255) AFTER emergency_contact');
     await addColumnIfMissing('patients', 'center_id', "center_id VARCHAR(255) DEFAULT 'center-001' AFTER last_name");
     await addColumnIfMissing('patients', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
     await addColumnIfMissing('patients', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
