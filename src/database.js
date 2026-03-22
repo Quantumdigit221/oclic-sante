@@ -4,6 +4,8 @@
 
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
@@ -35,6 +37,13 @@ const dbConfig = databaseUrl ? {
 // Pool de connexions
 let pool;
 let dbErrorLog = null;
+
+const logFile = path.join(process.cwd(), 'server-err.log');
+function logToFile(msg) {
+  try {
+    fs.appendFileSync(logFile, `[DB ${new Date().toISOString()}] ${msg}\n`);
+  } catch (e) { /* ignore */ }
+}
 
 export function getDbErrorLog() {
   return dbErrorLog;
@@ -353,6 +362,7 @@ export async function initializeDatabase() {
   } catch (error) {
     dbErrorLog = error.message;
     console.error('❌ Erreur d\'initialisation de la base de données:', error.message);
+    logToFile(`CRITICAL DB ERROR: ${error.stack || error.message}`);
     return false;
   }
 }
