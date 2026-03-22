@@ -279,12 +279,24 @@ export async function initializeDatabase() {
       `);
     }
 
-    const usersCount = await query("SELECT COUNT(*) as count FROM users");
-    if (usersCount[0].count === 0) {
-      console.log("🌱 Insertion de l'administrateur par défaut...");
+    const centersCount = await query("SELECT COUNT(*) as count FROM centers");
+    if (centersCount[0].count === 0) {
+      console.log("🌱 Insertion du centre par défaut...");
       await query(`
-        INSERT INTO users (id, name, email, password, role) VALUES 
-        ('admin-001', 'Administrateur O''CLIC SANTE', 'admin@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'SUPER_ADMIN')
+        INSERT INTO centers (id, name, address, phone, email, director_name, capacity, is_active) VALUES 
+        ('center-001', 'O''CLIC SANTE Principal', 'Dakar, Sénégal', '+221 77 000 00 00', 'contact@sante.quantum221.com', 'Dr. Sylla', 100, 1)
+      `);
+    }
+
+    const usersCount = await query("SELECT COUNT(*) as count FROM users");
+    if (usersCount[0].count <= 1) {
+      console.log("🌱 Insertion du personnel par défaut...");
+      await query(`
+        INSERT IGNORE INTO users (id, name, email, password, role, specialty) VALUES 
+        ('admin-001', 'Administrateur O''CLIC SANTE', 'admin@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'SUPER_ADMIN', NULL),
+        ('doc-001', 'Dr. Amet Fall', 'docteur@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'DOCTOR', 'Médecine Générale'),
+        ('doc-002', 'Dr. Sophie Ndiaye', 'pediatre@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'DOCTOR', 'Pédiatrie'),
+        ('nurse-001', 'Infirmier Aliou', 'infirmier@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'NURSE', NULL)
       `);
     }
 
