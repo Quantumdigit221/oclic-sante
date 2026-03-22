@@ -533,23 +533,29 @@ export class TicketModel {
     const rows = await query(sql, params);
     
     // Convertir RowDataPacket en POJO simple et Mapper snake_case vers camelCase pour compatibilité Frontend
-    const pojos = rows.map(r => ({ 
-      ...r,
-      ticketNumber: r.ticketNumber || r.ticket_number,
-      patientId: r.patientId || r.patient_id,
-      serviceId: r.serviceId || r.service_id,
-      doctorId: r.doctorId || r.doctor_id,
-      patientName: r.patientName || r.patient_name,
-      patientAge: r.patientAge || r.patient_age,
-      patientGender: r.patientGender || r.patient_gender,
-      patientPhone: r.patientPhone || r.patient_phone,
-      patientAddress: r.patientAddress || r.patient_address,
-      serviceName: r.serviceName || r.service_name,
-      paymentMethod: r.paymentMethod || r.payment_method,
-      centerId: r.centerId || r.center_id,
-      createdAt: r.createdAt || r.created_at,
-      updatedAt: r.updatedAt || r.updated_at
-    }));
+    const pojos = rows.map(r => {
+      // Nettoyage de l'âge pour éviter "NaN" dans le JSON
+      const rawAge = r.patient_age ?? r.patientAge ?? r.age ?? 0;
+      const cleanAge = parseInt(rawAge);
+      
+      return { 
+        ...r,
+        ticketNumber: r.ticket_number || r.ticketNumber,
+        patientId: r.patient_id || r.patientId,
+        serviceId: r.service_id || r.serviceId,
+        doctorId: r.doctor_id || r.doctorId,
+        patientName: r.patient_name || r.patientName || r.name,
+        patientAge: isNaN(cleanAge) ? 0 : cleanAge,
+        patientGender: r.patient_gender || r.patientGender || r.gender,
+        patientPhone: r.patient_phone || r.patientPhone || r.phone,
+        patientAddress: r.patient_address || r.patientAddress || r.address,
+        serviceName: r.service_name || r.serviceName,
+        paymentMethod: r.payment_method || r.paymentMethod,
+        centerId: r.center_id || r.centerId,
+        createdAt: r.created_at || r.createdAt,
+        updatedAt: r.updated_at || r.updatedAt
+      };
+    });
     return await this.attachServices(pojos);
   }
 
@@ -640,8 +646,8 @@ export class TicketModel {
           doctorId || null,
           patientId || null,
           patientName,
-          patientAge,
-          patientGender,
+          parseInt(patientAge) || 0,
+          patientGender || 'M',
           patientPhone || null,
           patientAddress || null,
           serviceNames || serviceName || 'Consultation',
