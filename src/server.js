@@ -122,12 +122,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use((req, res, next) => {
-  const msg = `[REQ] ${req.method} ${req.url}`;
-  try {
-    const logPath = path.join(__dirname, '../server-err.log');
-    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
-  } catch (e) {}
-  console.log(msg);
+  console.log(`[REQ] ${req.method} ${req.url}`);
   next();
 });
 

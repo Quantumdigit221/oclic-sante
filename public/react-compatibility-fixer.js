@@ -419,7 +419,7 @@
         fixDashboard();
         setupPrintHijack();
         setupTicketFixer();
-        setInterval(fixDashboard, 1500);
+        setInterval(fixDashboard, 30000); // Ralenti à 30 secondes pour économiser le serveur
     }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
