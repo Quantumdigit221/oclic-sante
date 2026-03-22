@@ -982,7 +982,7 @@ app.get('*', (req, res) => {
 });
 // Initialisation au démarrage
 async function startServer() {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Serveur O'CLIC SANTE DB démarré sur port ${PORT}`);
   });
 
