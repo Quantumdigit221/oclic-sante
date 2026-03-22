@@ -74,7 +74,9 @@ export async function initializeDatabase() {
   logToFile(`INIT: Connexion sur ${dbConfig.host}...`);
   try {
     dbErrorLog = null;
+    // CRITIQUE : mysql2/promise utilise .createPool() directement sur l'objet importé
     pool = mysql.createPool(dbConfig);
+
     
     // Test simple
     await pool.query('SELECT 1');
