@@ -1,12 +1,29 @@
-// Point d'entrée pour Hostinger (Passenger)
-console.log('🚀 Démarrage de l\'application O\'CLIC SANTE...');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logFile = path.join(__dirname, 'server-err.log');
+
+function logErr(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  fs.appendFileSync(logFile, line);
+  console.error(msg);
+}
+
+logErr('🚀 Tentative de démarrage de l\'application...');
 
 process.on('uncaughtException', (err) => {
-  console.error('FATAL ERROR (Uncaught Exception):', err);
+  logErr(`FATAL ERROR (Uncaught Exception): ${err.stack || err}`);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('FATAL ERROR (Unhandled Rejection) at:', promise, 'reason:', reason);
+  logErr(`FATAL ERROR (Unhandled Rejection) at: ${promise} reason: ${reason}`);
 });
 
-import './src/server.js';
+try {
+  await import('./src/server.js');
+} catch (e) {
+  logErr(`FAILED TO IMPORT server.js: ${e.stack || e}`);
+}
