@@ -4,6 +4,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dns from 'dns';
+
+// Force Node.js > 17 to resolve 'localhost' to IPv4 (127.0.0.1) instead of IPv6 (::1)
+dns.setDefaultResultOrder('ipv4first');
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import {
