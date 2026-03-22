@@ -407,8 +407,8 @@ app.post('/api/tickets', async (req, res) => {
     return res.json(safeTicket(newTicket));
   } catch (error) {
     console.error('Erreur create ticket:', error);
-    const detail = process.env.NODE_ENV === 'production' ? undefined : error?.message;
-    res.status(500).json({ error: 'Erreur lors de la création du ticket', ...(detail ? { detail } : {}) });
+    const detail = error?.message || 'Erreur inconnue';
+    res.status(500).json({ error: 'Erreur lors de la création du ticket', detail });
   }
 });
 

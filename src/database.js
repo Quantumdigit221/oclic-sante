@@ -101,7 +101,7 @@ export async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS ticket_services (
         id VARCHAR(255) PRIMARY KEY,
         ticket_id VARCHAR(255) NOT NULL,
-        service_id VARCHAR(255) NOT NULL,
+        service_id VARCHAR(255),
         service_name VARCHAR(255),
         price DECIMAL(10, 2) DEFAULT 0.00,
         quantity INT DEFAULT 1,
@@ -266,6 +266,11 @@ export async function initializeDatabase() {
     await addColumnIfMissing('tickets', 'payment_method', 'payment_method VARCHAR(50) DEFAULT "CASH" AFTER amount');
     await addColumnIfMissing('tickets', 'notes', 'notes TEXT AFTER payment_method');
     await addColumnIfMissing('tickets', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER status');
+
+    await addColumnIfMissing('ticket_services', 'ticket_id', 'ticket_id VARCHAR(255) AFTER id');
+    await addColumnIfMissing('ticket_services', 'service_id', 'service_id VARCHAR(255) AFTER ticket_id');
+    await addColumnIfMissing('ticket_services', 'service_name', 'service_name VARCHAR(255) AFTER service_id');
+    await addColumnIfMissing('ticket_services', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
 
     await addColumnIfMissing('services', 'description', 'description TEXT AFTER name');
     await addColumnIfMissing('services', 'category', 'category VARCHAR(255) DEFAULT "Consultation" AFTER name');
@@ -578,11 +583,31 @@ export class TicketModel {
         price: amount || 0
       }] : []);
 
-    const normalizedServices = services.map(s => ({
-      id: s.id || s.serviceId || null,
-      name: s.name || s.serviceName || '',
-      price: parseFloat(String(s.price ?? s.amount ?? 0)) || 0
-    }));
+    const normalizedServices = services.map(s => {
+      if (typeof s === 'string') return { id: s, name: '', price: 0 };
+      const rawPrice = s.price ?? s.amount ?? 0;
+      const cleanPriceStr = String(rawPrice).replace(',', '.').replace(/\s/g, '');
+      return {
+        id: s.id || s.serviceId || null,
+        name: s.name || s.serviceName || '',
+        price: parseFloat(cleanPriceStr) || 0
+      };
+    });
+
+    // RECONTRUITS LES NOMS SI MANQUANTS (SECOURS)
+    if (dbConnected && normalizedServices.length > 0) {
+      for (let i = 0; i < normalizedServices.length; i++) {
+        if (!normalizedServices[i].name && normalizedServices[i].id) {
+          try {
+            const [found] = await query('SELECT name, price FROM services WHERE id = ? LIMIT 1', [normalizedServices[i].id]);
+            if (found) {
+              normalizedServices[i].name = found.name;
+              if (normalizedServices[i].price === 0) normalizedServices[i].price = parseFloat(found.price);
+            }
+          } catch (e) { /* ignore */ }
+        }
+      }
+    }
 
     const totalAmount = normalizedServices.reduce((sum, s) => sum + (s.price || 0), 0);
     const serviceNames = normalizedServices
