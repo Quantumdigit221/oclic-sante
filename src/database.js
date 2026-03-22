@@ -279,6 +279,15 @@ export async function initializeDatabase() {
       `);
     }
 
+    const usersCount = await query("SELECT COUNT(*) as count FROM users");
+    if (usersCount[0].count === 0) {
+      console.log("🌱 Insertion de l'administrateur par défaut...");
+      await query(`
+        INSERT INTO users (id, name, email, password, role) VALUES 
+        ('admin-001', 'Administrateur O''CLIC SANTE', 'admin@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'SUPER_ADMIN')
+      `);
+    }
+
     const medicinesCount = await query("SELECT COUNT(*) as count FROM medicines");
     if (medicinesCount[0].count === 0) {
       console.log('🌱 Insertion des médicaments de base...');
