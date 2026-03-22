@@ -189,9 +189,30 @@ export class MedicineModel {
 }
 
 // STUBS for missing but imported models
-export class ServiceModel { static async findAll() { return await query('SELECT * FROM services'); } }
-export class ConsultationModel { static async findAll() { return []; } }
-export class SettingsModel { static async getAll() { return {}; } }
-export class LabResultModel { static async findAll() { return []; } }
+// STUBS for missing but imported models
+export class ServiceModel { 
+  static async findAll() { return await query('SELECT * FROM services'); }
+  static async findById(id) { 
+    const res = await query('SELECT * FROM services WHERE id = ?', [id]);
+    return res[0] || null;
+  }
+}
+export class ConsultationModel { 
+  static async findAll() { return []; }
+  static async findById(id) { return null; }
+  static async create(data) { return {id: `cons-${Date.now()}`, ...data}; }
+}
+export class SettingsModel { 
+  static async getAll() { return {}; }
+  static async get(key, fallback = null) { return fallback; }
+  static async set(key, val) { return true; }
+}
+export class LabResultModel { 
+  static async findAll() { return []; }
+  static async create(data) { return {id: `lab-${Date.now()}`, ...data}; }
+}
+export class CenterModel {
+  static async findById(id) { return { id: "center-001", name: "O'CLIC SANTE" }; }
+}
 
 export default { initializeDatabase, query, transaction, UserModel, TicketModel, PatientModel, MedicineModel };
