@@ -261,6 +261,7 @@ export async function initializeDatabase() {
         }
       }
     };
+    /* 
     await addColumnIfMissing('tickets', 'patient_phone', 'patient_phone VARCHAR(50) AFTER patient_gender');
     await addColumnIfMissing('tickets', 'patient_address', 'patient_address TEXT AFTER patient_phone');
     await addColumnIfMissing('tickets', 'payment_method', 'payment_method VARCHAR(50) DEFAULT "CASH" AFTER amount');
@@ -287,6 +288,7 @@ export async function initializeDatabase() {
     await addColumnIfMissing('patients', 'center_id', "center_id VARCHAR(255) DEFAULT 'center-001' AFTER last_name");
     await addColumnIfMissing('patients', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
     await addColumnIfMissing('patients', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    */
     try { await query("UPDATE patients SET centerId = 'center-001' WHERE centerId IS NULL"); } catch (e) { }
     try { await query("UPDATE patients SET phoneNumber = phone WHERE phoneNumber IS NULL AND phone IS NOT NULL"); } catch (e) { }
 
