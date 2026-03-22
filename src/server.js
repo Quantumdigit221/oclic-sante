@@ -25,6 +25,8 @@ import {
   ConsultationModel,
   SettingsModel,
   LabResultModel,
+  CenterModel,
+  SalesModel,
   query,
   getDbErrorLog
 } from './database.js';
@@ -897,9 +899,10 @@ app.patch('/api/lab-results/:id', async (req, res) => {
 // Sales
 app.get('/api/sales', async (req, res) => {
   try {
-    const sales = dbConnected ? await query("SELECT * FROM sales ORDER BY created_at DESC") : [];
+    const sales = dbConnected ? await SalesModel.findAll() : [];
     res.json(sales);
   } catch (error) {
+    console.error('[API] GET /api/sales:', error.message);
     res.json([]);
   }
 });

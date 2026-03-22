@@ -577,4 +577,30 @@ export class CenterModel {
   }
 }
 
-export default { initializeDatabase, query, transaction, UserModel, TicketModel, PatientModel, MedicineModel };
+export class SalesModel {
+  static async findAll() {
+    try {
+      return await query('SELECT * FROM sales ORDER BY created_at DESC');
+    } catch (e) {
+      // Fallback si la colonne created_at manque (migration)
+      return await query('SELECT * FROM sales ORDER BY id DESC');
+    }
+  }
+}
+
+export default { 
+  initializeDatabase, 
+  query, 
+  transaction, 
+  UserModel, 
+  TicketModel, 
+  PatientModel, 
+  MedicineModel, 
+  ServiceModel,
+  ConsultationModel,
+  LabResultModel,
+  SettingsModel,
+  CenterModel,
+  SalesModel,
+  getDbErrorLog 
+};
