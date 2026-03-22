@@ -404,10 +404,19 @@ export class MedicineModel {
 // STUBS for missing but imported models
 // STUBS for missing but imported models
 export class ServiceModel {
-  static async findAll() { return await query('SELECT * FROM services'); }
+  static async findAll() { return await query('SELECT * FROM services ORDER BY createdAt DESC'); }
   static async findById(id) {
     const res = await query('SELECT * FROM services WHERE id = ?', [id]);
     return res[0] || null;
+  }
+  static async create(d) {
+    const id = d.id || `service-${Date.now()}`;
+    await query(
+      `INSERT INTO services (id, name, description, category, price, durationMinutes, color, centerId) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, d.name, d.description || '', d.category || 'Consultation', parseFloat(d.price || 0), parseInt(d.durationMinutes || 30), d.color || '#3b82f6', d.centerId || 'center-001']
+    );
+    return await this.findById(id);
   }
 }
 export class ConsultationModel {
