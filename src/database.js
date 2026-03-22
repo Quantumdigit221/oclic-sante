@@ -10,46 +10,23 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 
-// Configuration de la base de données
-// On construit l'objet de configuration finale
-// Sur Hostinger, on privilégie les variables DB_HOST/DB_NAME si elles sont définies
-const dbConfig = (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') ? {
-  host: process.env.DB_HOST,
+// Configuration de la base de données (Hostinger MySQL)
+const dbConfig = {
+  host: process.env.DB_HOST || '127.0.0.1',
   port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  dbName: process.env.DB_NAME,
-  charset: 'utf8mb4',
-  timezone: '+00:00',
-  acquireTimeout: 10000,
-  timeout: 10000,
-  connectionLimit: 10,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
-  ssl: (process.env.DB_SSL === 'true') ? { rejectUnauthorized: false } : undefined
-} : (process.env.DATABASE_URL ? {
-  uri: process.env.DATABASE_URL,
-  dbName: process.env.DATABASE_URL.split('/').pop().split('?')[0],
-  ssl: (process.env.DATABASE_URL.includes('render.com') || process.env.DATABASE_URL.includes('hstgr.io') || process.env.DB_SSL === 'true') 
-       ? { rejectUnauthorized: false } 
-       : undefined
-} : {
-  host: '127.0.0.1',
-  port: 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'oclic_sante_db',
   dbName: process.env.DB_NAME || 'oclic_sante_db',
   charset: 'utf8mb4',
   timezone: '+00:00',
-  acquireTimeout: 10000,
-  timeout: 10000,
+  acquireTimeout: 15000,
+  timeout: 15000,
   connectionLimit: 10,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  ssl: undefined
-});
+  ssl: (process.env.DB_SSL === 'true') ? { rejectUnauthorized: false } : undefined
+};
 
 // Pool de connexions
 let pool;
@@ -273,14 +250,9 @@ export async function initializeDatabase() {
       )
     `);
 
-    // On détecte le nom de la base pour la requête de schéma
-    let dbName = dbConfig.dbName || dbConfig.database;
-    if (!dbName && dbConfig.uri) {
-      // Tenter d'extraire de l'URI (format: mysql://user:pass@host/dbname)
-      const parts = dbConfig.uri.split('/');
-      dbName = parts[parts.length - 1].split('?')[0];
-    }
-    logToFile(`SCHEMA: Chargement du cache pour ${dbName || 'INCONNUE'}...`);
+    // On utilise le nom de la base configuré
+    const dbName = dbConfig.database;
+    logToFile(`SCHEMA: Chargement du cache pour ${dbName}...`);
 
     const schemaRows = await query(
       `SELECT TABLE_NAME, COLUMN_NAME 
