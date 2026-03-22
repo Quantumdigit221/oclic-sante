@@ -118,7 +118,6 @@ export async function initializeDatabase() {
         gender VARCHAR(10),
         phone VARCHAR(20),
         address TEXT,
-        centerId VARCHAR(255) DEFAULT 'center-001',
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
