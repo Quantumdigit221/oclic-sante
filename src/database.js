@@ -244,7 +244,7 @@ export async function initializeDatabase() {
         const rows = await query(
           `SELECT COUNT(*) as count
            FROM INFORMATION_SCHEMA.COLUMNS
-           WHERE TABLE_NAME = ? AND COLUMN_NAME = ?`,
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
           [table, column]
         );
         return rows && rows[0] && rows[0].count > 0;
