@@ -1,7 +1,18 @@
 (function() {
     'use strict';
     
-    console.log('O-CLIC-SANTE-FIXER v2.3: Session Rescue & Fixes Active...');
+    console.log('O-CLIC-SANTE-FIXER v2.4: Session Rescue & Fixes Active...');
+    
+    // VERIFICATION DE LA BASE DE DONNÉES (FRONTEND)
+    fetch('/api/center').then(r => r.json()).then(center => {
+        if (center && (center.name || center.id)) {
+            console.log('%c✅ BASE DE DONNÉES: CONNECTÉE (MySQL Hostinger)', 'color: #059669; font-weight: bold; font-size: 12px;');
+        } else {
+            console.warn('%c⚠️ BASE DE DONNÉES: MODE MÉMOIRE (Non persistante)', 'color: #d97706; font-weight: bold;');
+        }
+    }).catch(() => {
+        console.error('%c❌ BASE DE DONNÉES: ERREUR DE CONNEXION', 'color: #dc2626; font-weight: bold;');
+    });
 
     // --- SESSION RESCUER (Fixes White Page on /settings) ---
     function rescueSession() {
