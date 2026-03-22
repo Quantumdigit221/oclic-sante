@@ -55,16 +55,7 @@ export async function initializeDatabase() {
   logToFile(`INIT: Tentative de connexion DB sur ${dbConfig.host || 'URI'}...`);
   try {
     dbErrorLog = null;
-    // Créer le pool de connexions (mysql2 supporte soit une chaîne URI soit un objet config)
-    if (typeof dbConfig === 'string' || (dbConfig && dbConfig.uri)) {
-      const uri = typeof dbConfig === 'string' ? dbConfig : dbConfig.uri;
-      const options = typeof dbConfig === 'object' ? { ...dbConfig } : {};
-      if (options.uri) delete options.uri; 
-      
-      pool = mysql.createPool(uri, options);
-    } else {
-      pool = mysql.createPool(dbConfig);
-    }
+    pool = mysql.createPool(dbConfig);
 
     // Tester la connexion (version robuste)
     logToFile(`CONNEXION: Tentative sur ${dbConfig.host}:${dbConfig.port} / Base: ${dbConfig.database} / User: ${dbConfig.user}`);
@@ -76,7 +67,7 @@ export async function initializeDatabase() {
     } catch (err) {
       dbErrorLog = err.message;
       logToFile(`ERREUR FATALE: ${err.message}`);
-      throw err; // On laisse remonter pour que initializeDatabase catch et renvoie false
+      throw err; 
     }
     
     // Créer les tables si elles n'existent pas
@@ -258,181 +249,90 @@ export async function initializeDatabase() {
       )
     `);
 
-    // On utilise le nom de la base configuré
+    // Cache et Migrations
     const dbName = dbConfig.database;
-    logToFile(`SCHEMA: Chargement du cache pour ${dbName}...`);
-
     const schemaRows = await query(
-      `SELECT TABLE_NAME, COLUMN_NAME 
-       FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = ?`,
-      [dbName || 'DATABASE()']
+      `SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ?`,
+      [dbName]
     );
     const schemaCache = new Set(schemaRows.map(r => `${r.TABLE_NAME}.${r.COLUMN_NAME}`));
 
-    const columnExists = (table, column) => {
-      return schemaCache.has(`${table}.${column}`);
-    };
-
     const addColumnIfMissing = async (table, column, ddl) => {
-      if (!columnExists(table, column)) {
+      if (!schemaCache.has(`${table}.${column}`)) {
         try {
           await query(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
-          // On met à jour le cache pour les appels suivants au cas où
           schemaCache.add(`${table}.${column}`);
-        } catch (e) {
-          console.warn(`[DB] Could not add column ${column} to ${table}:`, e.message);
-        }
+        } catch (e) { console.warn(`[DB] Column ${column} error:`, e.message); }
       }
     };
     
-    // Fonction utilitaire pour temporiser
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
     async function runAsyncMigrations() {
-      console.log("🕒 Démarrage des migrations en arrière-plan dans 10 secondes...");
-      await sleep(10000); // On attend 10 secondes pour être sûr que le serveur est bien réveillé
+      console.log("🕒 Background migrations starting in 10s...");
+      await sleep(10000);
       
       const migrations = [
-        // Tickets
         ['tickets', 'patient_phone', 'patient_phone VARCHAR(50) AFTER patient_gender'],
         ['tickets', 'patient_address', 'patient_address TEXT AFTER patient_phone'],
         ['tickets', 'payment_method', 'payment_method VARCHAR(50) DEFAULT "CASH" AFTER amount'],
         ['tickets', 'notes', 'notes TEXT AFTER payment_method'],
         ['tickets', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER status'],
-        
-        // Ticket Services
-        ['ticket_services', 'ticket_id', 'ticket_id VARCHAR(255) AFTER id'],
-        ['ticket_services', 'service_id', 'service_id VARCHAR(255) AFTER ticket_id'],
-        ['ticket_services', 'service_name', 'service_name VARCHAR(255) AFTER service_id'],
         ['ticket_services', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'],
-        
-        // Services
-        ['services', 'description', 'description TEXT AFTER name'],
-        ['services', 'category', 'category VARCHAR(255) DEFAULT "Consultation" AFTER name'],
-        ['services', 'duration_minutes', 'duration_minutes INT DEFAULT 30 AFTER price'],
-        ['services', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER duration_minutes'],
-        ['services', 'is_active', 'is_active TINYINT(1) DEFAULT 1 AFTER center_id'],
-        ['services', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'],
         ['services', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'],
-        
-        // Patients
         ['patients', 'first_name', 'first_name VARCHAR(255) AFTER name'],
         ['patients', 'last_name', 'last_name VARCHAR(255) AFTER first_name'],
         ['patients', 'date_of_birth', 'date_of_birth DATE AFTER last_name'],
-        ['patients', 'phone_number', 'phone_number VARCHAR(20) AFTER phone'],
-        ['patients', 'phoneNumber', 'phoneNumber VARCHAR(20) AFTER phone_number'],
-        ['patients', 'birthDate', 'birthDate DATE AFTER dateOfBirth'],
-        ['patients', 'bloodGroup', 'bloodGroup VARCHAR(10) AFTER gender'],
-        ['patients', 'blood_group', 'blood_group VARCHAR(10) AFTER bloodGroup'],
-        ['patients', 'allergies', 'allergies TEXT AFTER blood_group'],
-        ['patients', 'emergencyContact', 'emergencyContact VARCHAR(255) AFTER address'],
-        ['patients', 'emergency_contact', 'emergency_contact VARCHAR(255) AFTER emergencyContact'],
-        ['patients', 'email', 'email VARCHAR(255) AFTER emergency_contact'],
         ['patients', 'center_id', "center_id VARCHAR(255) DEFAULT 'center-001' AFTER last_name"],
-        ['patients', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'],
         ['patients', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'],
-        
-        // Medicines
-        ['medicines', 'generic_name', 'generic_name VARCHAR(255) AFTER name'],
-        ['medicines', 'description', 'description TEXT AFTER generic_name'],
-        ['medicines', 'category', "category VARCHAR(255) DEFAULT 'Général' AFTER description"],
-        ['medicines', 'unit', "unit VARCHAR(50) DEFAULT 'Boite' AFTER category"],
-        ['medicines', 'supplier', 'supplier VARCHAR(255) AFTER price'],
-        ['medicines', 'expiry_date', 'expiry_date DATE AFTER supplier'],
-        ['medicines', 'storage_conditions', 'storage_conditions VARCHAR(255) AFTER expiry_date'],
         ['medicines', 'stock', 'stock INT DEFAULT 0 AFTER stock_quantity'],
+        ['medicines', 'generic_name', 'generic_name VARCHAR(255) AFTER name'],
         ['medicines', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'],
-        
-        // Index de performance pour Hostinger
         ['patients', 'idx_patient_center', 'INDEX (center_id)'],
         ['tickets', 'idx_ticket_center', 'INDEX (center_id)'],
-        ['consultations', 'idx_cons_center', 'INDEX (center_id)'],
         ['services', 'idx_svc_center', 'INDEX (center_id)']
       ];
 
       for (const [table, col, ddl] of migrations) {
         if (ddl.startsWith('INDEX')) {
-           try { await query(`ALTER TABLE ${table} ADD ${ddl}`); } catch(e) {}
+          try { await query(`ALTER TABLE ${table} ADD ${ddl}`); } catch(e) {}
         } else {
-           await addColumnIfMissing(table, col, ddl);
+          await addColumnIfMissing(table, col, ddl);
         }
         await sleep(800); 
       }
       
-      logToFile("ASYNC MIGRATIONS: Toutes les colonnes ont été vérifiées/ajoutées.");
-      console.log("✅ Toutes les colonnes ont été vérifiées/ajoutées en arrière-plan.");
-
       try { await query("UPDATE medicines SET stock = stock_quantity WHERE stock = 0 AND stock_quantity > 0"); } catch (e) { }
       try { await query("UPDATE patients SET center_id = 'center-001' WHERE center_id IS NULL"); } catch (e) { }
     }
     
-    // On lance les migrations lourdes en arrière-plan pour ne pas bloquer le démarrage
     runAsyncMigrations().catch(e => console.error('Migration error:', e));
 
-    // Données par défaut (uniquement si les tables sont vides)
+    // Données par défaut
     const servicesCount = await query("SELECT COUNT(*) as count FROM services");
     if (servicesCount[0].count === 0) {
-      console.log('🌱 Insertion des services par défaut...');
-      await query(`
-        INSERT INTO services (id, name, description, category, price, durationMinutes, color, centerId, isActive) VALUES 
-        ('s1', 'Consultation Générale', 'Examen clinique de routine', 'Consultation', 5000, 20, '#3b82f6', 'center-001', 1),
-        ('s2', 'Consultation Pédiatrique', 'Spécialisé enfants 0-14 ans', 'Consultation', 7500, 30, '#10b981', 'center-001', 1),
-        ('s3', 'Urgences', 'Prise en charge immédiate', 'Urgences', 15000, 60, '#ef4444', 'center-001', 1),
-        ('s4', 'Analyse Sanguine (NFS)', 'Bilan laboratoire complet', 'Laboratoire', 12000, 15, '#a855f7', 'center-001', 1)
-      `);
+      await query(`INSERT INTO services (id, name, description, category, price, durationMinutes, color, centerId, isActive) VALUES 
+        ('s1', 'Consultation Générale', 'Examen clinique', 'Consultation', 5000, 20, '#3b82f6', 'center-001', 1)`);
     }
 
     const centersCount = await query("SELECT COUNT(*) as count FROM centers");
     if (centersCount[0].count === 0) {
-      console.log("🌱 Insertion du centre par défaut...");
-      await query(`
-        INSERT INTO centers (id, name, address, phone, email, director_name, capacity, is_active) VALUES 
-        ('center-001', 'O''CLIC SANTE Principal', 'Dakar, Sénégal', '+221 77 000 00 00', 'contact@sante.quantum221.com', 'Dr. Sylla', 100, 1)
-      `);
+      await query(`INSERT INTO centers (id, name, address, phone, email, director_name, capacity, is_active) VALUES 
+        ('center-001', 'O''CLIC SANTE Principal', 'Dakar, Sénégal', '+221 77 000 00 00', 'contact@sante.quantum221.com', 'Dr. Sylla', 100, 1)`);
     }
 
     const usersCount = await query("SELECT COUNT(*) as count FROM users");
     if (usersCount[0].count <= 1) {
-      console.log("🌱 Insertion du personnel par défaut...");
-      await query(`
-        INSERT IGNORE INTO users (id, name, email, password, role, specialty) VALUES 
-        ('admin-001', 'Administrateur O''CLIC SANTE', 'admin@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'SUPER_ADMIN', NULL),
-        ('doc-001', 'Dr. Amet Fall', 'docteur@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'DOCTOR', 'Médecine Générale'),
-        ('doc-002', 'Dr. Sophie Ndiaye', 'pediatre@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'DOCTOR', 'Pédiatrie'),
-        ('nurse-001', 'Infirmier Aliou', 'infirmier@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'NURSE', NULL)
-      `);
-    }
-
-    const medicinesCount = await query("SELECT COUNT(*) as count FROM medicines");
-    if (medicinesCount[0].count === 0) {
-      console.log('🌱 Insertion des médicaments de base...');
-      await query(`
-        INSERT INTO medicines (id, name, stock_quantity, min_stock_alert, price) VALUES 
-        ('m1', 'Paracétamol 500mg', 100, 20, 500),
-        ('m2', 'Amoxicilline 500mg', 50, 10, 2500),
-        ('m3', 'Ibuprofène 400mg', 80, 15, 1200),
-        ('m4', 'Vitamine C 1000mg', 150, 30, 800),
-        ('m5', 'Bétadine dermique', 20, 5, 3500)
-      `);
-    }
-
-    const patientsCount = await query("SELECT COUNT(*) as count FROM patients");
-    if (patientsCount[0].count === 0 || patientsCount[0].count <= 5) {
-      console.log('🌱 Insertion/Mise à jour des patients avec dates de naissance...');
-      await query(`
-        REPLACE INTO patients (id, name, firstName, lastName, centerId, ticket_number, age, gender, phone, address, dateOfBirth) VALUES 
-        ('p1', 'Mamadou Diop', 'Mamadou', 'Diop', 'center-001', 'T-2024-001', 35, 'M', '+221 77 123 45 67', 'Dakar Plateau', '1989-05-15'),
-        ('p2', 'Aissatou Sow', 'Aissatou', 'Sow', 'center-001', 'T-2024-002', 28, 'F', '+221 78 456 78 90', 'Mermoz, Dakar', '1996-10-20'),
-        ('p3', 'Fatou Ndiaye', 'Fatou', 'Ndiaye', 'center-001', 'T-2024-003', 42, 'F', '+221 70 987 65 43', 'Sacre-Cœur, Dakar', '1982-03-30')
-      `);
+      await query(`INSERT IGNORE INTO users (id, name, email, password, role) VALUES 
+        ('admin-001', 'Administrateur', 'admin@sante.quantum221.com', '$2b$10$IvYowXwqRRbSKS2M3m6lPuKD1TwGWRDz2aouI1zbR0Frsd7dc2QgO', 'SUPER_ADMIN')`);
     }
 
     console.log('✅ Structure de la base de données prête');
+    logToFile("INIT: Structure prête.");
     return true;
   } catch (error) {
     dbErrorLog = error.message;
-    console.error('❌ Erreur d\'initialisation de la base de données:', error.message);
+    console.error('❌ Erreur d\'initialisation:', error.message);
     logToFile(`CRITICAL DB ERROR: ${error.stack || error.message}`);
     return false;
   }
