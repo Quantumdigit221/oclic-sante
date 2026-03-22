@@ -50,15 +50,52 @@ app.get('/debug-db', async (req, res) => {
       const testId = 'test-' + Date.now();
       await query("INSERT INTO patients (id, name, firstName) VALUES (?, 'DIAGNOSTIC PROBE', 'TEST')", [testId]);
       const [verify] = await query("SELECT * FROM patients WHERE id = ?", [testId]);
+      const dbName = (await query('SELECT DATABASE() as db'))[0].db;
+      const dbUser = (await query('SELECT USER() as user'))[0].user;
+      
+      const lastPatients = await query("SELECT name, created_at FROM patients ORDER BY created_at DESC LIMIT 5");
+      const lastMeds = await query("SELECT name, generic_name, stock_quantity, created_at FROM medicines ORDER BY created_at DESC LIMIT 5");
+
       dbDetails = {
         verifyWriteSuccess: !!verify,
         insertedId: testId,
-        database: (await query('SELECT DATABASE() as db'))[0].db,
-        user: (await query('SELECT USER() as user'))[0].user,
+        database: dbName,
+        user: dbUser,
         now: new Date().toISOString()
       };
-      // Nettoyage (on laisse si on veut vérifier à l'œil nu)
-      // await query("DELETE FROM patients WHERE id = ?", [testId]);
+      
+      res.header('Content-Type', 'text/html');
+      res.send(`
+        <html>
+          <head><title>O'CLIC SANTE - DB DEBUG</title><style>body{font-family:sans-serif;padding:40px;line-height:1.6} pre{background:#f4f4f4;padding:15px;border-radius:5px} .status-connected{color:green;font-weight:bold} .status-error{color:red;font-weight:bold} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:8px;text-align:left} th{background:#eee}</style></head>
+          <body>
+            <h1>🔧 Diagnostic complet de la Base de Données</h1>
+            <p>Statut: <span class="${dbStatus === 'CONNECTED' ? 'status-connected' : 'status-error'}">${dbStatus}</span></p>
+            
+            <h3>📝 Log d'Erreurs</h3>
+            <pre>${errorLog || 'Aucune erreur consignée.'}</pre>
+  
+            <h3>📋 Derniers Patients (Base de données)</h3>
+            <table>
+              <tr><th>Nom</th><th>Date Création</th></tr>
+              ${lastPatients.map(p => `<tr><td>${p.name}</td><td>${p.created_at}</td></tr>`).join('') || '<tr><td colspan="2">Aucun patient</td></tr>'}
+            </table>
+
+            <h3>💊 Derniers Médicaments (Base de données)</h3>
+            <table>
+              <tr><th>Nom</th><th>Générique</th><th>Stock</th><th>Création</th></tr>
+              ${lastMeds.map(m => `<tr><td>${m.name}</td><td>${m.generic_name}</td><td>${m.stock_quantity}</td><td>${m.created_at}</td></tr>`).join('') || '<tr><td colspan="4">Aucun médicament</td></tr>'}
+            </table>
+
+            <h3>📂 Détails Techniques</h3>
+            <pre>${JSON.stringify(dbDetails, null, 2)}</pre>
+            
+            <hr>
+            <button onclick="window.location.reload()">🔄 Rafraîchir les données</button>
+          </body>
+        </html>
+      `);
+      return;
     } else {
       dbStatus = 'DISCONNECTED / MEMORY MODE';
     }
@@ -66,22 +103,11 @@ app.get('/debug-db', async (req, res) => {
     res.header('Content-Type', 'text/html');
     res.send(`
       <html>
-        <head><title>O'CLIC SANTE - DB DEBUG</title><style>body{font-family:sans-serif;padding:40px;line-height:1.6} pre{background:#f4f4f4;padding:15px;border-radius:5px} .status-connected{color:green;font-weight:bold} .status-error{color:red;font-weight:bold}</style></head>
+        <head><title>O'CLIC SANTE - DB DEBUG (FAIL)</title></head>
         <body>
-          <h1>🔧 Diagnostic Base de Données</h1>
-          <p>Statut: <span class="${dbStatus === 'CONNECTED' ? 'status-connected' : 'status-error'}">${dbStatus}</span></p>
-          
-          <h3>📝 Dernier Log d'Erreur</h3>
-          <pre>${errorLog || 'Aucune erreur consignée.'}</pre>
-
-          <h3>📂 Détails de Connexion</h3>
-          <pre>${JSON.stringify(dbDetails, null, 2)}</pre>
-
-          <h3>🚀 Test de persistence</h3>
-          <p>Pour tester si la base écrit vraiment, <a href="/api/center">cliquez ici pour voir le centre</a>.</p>
-          
-          <hr>
-          <button onclick="window.location.reload()">Rafraîchir</button>
+          <h1 style="color:red">❌ BASE DE DONNÉES DÉCONNECTÉE</h1>
+          <pre>${errorLog}</pre>
+          <button onclick="window.location.reload()">Réessayer</button>
         </body>
       </html>
     `);
