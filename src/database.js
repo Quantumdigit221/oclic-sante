@@ -36,7 +36,7 @@ function logToFile(msg) {
     const time = new Date().toISOString();
     fs.appendFileSync(logFile, `[${time}] ${msg}\n`);
     console.log(`[LOG] ${msg}`);
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export function getDbErrorLog() {
@@ -77,7 +77,7 @@ export async function initializeDatabase() {
     // CRITIQUE : mysql2/promise utilise .createPool() directement sur l'objet importé
     pool = mysql.createPool(dbConfig);
 
-    
+
     // Test simple
     await pool.query('SELECT 1');
     logToFile(`SUCCÈS: DB Connectée.`);
@@ -93,39 +93,39 @@ export async function initializeDatabase() {
 
     // Migrations en arrière-plan
     async function runAsyncMigrations() {
-       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-       await sleep(5000);
-       const cols = [
-         ['tickets', 'patient_id', 'VARCHAR(255) AFTER ticket_number'],
-         ['tickets', 'service_id', 'VARCHAR(255) AFTER patient_id'],
-         ['tickets', 'doctor_id', 'VARCHAR(255) AFTER service_id'],
-         ['tickets', 'patient_age', 'INT AFTER patient_name'],
-         ['tickets', 'patient_gender', 'VARCHAR(10) AFTER patient_age'],
-         ['tickets', 'patient_phone', 'VARCHAR(50) AFTER patient_gender'],
-         ['tickets', 'patient_address', 'TEXT AFTER patient_phone'],
-         ['tickets', 'amount', 'DECIMAL(10,2) DEFAULT 0.00 AFTER service_name'],
-         ['tickets', 'payment_method', 'VARCHAR(50) DEFAULT "CASH" AFTER amount'],
-         ['tickets', 'notes', 'TEXT AFTER payment_method'],
-         ['patients', 'firstName', 'VARCHAR(255) AFTER name'],
-         ['patients', 'lastName', 'VARCHAR(255) AFTER firstName'],
-         ['patients', 'dateOfBirth', 'DATE AFTER lastName'],
-         ['patients', 'gender', 'VARCHAR(10) AFTER dateOfBirth'],
-         ['patients', 'phone', 'VARCHAR(20) AFTER gender'],
-         ['patients', 'address', 'TEXT AFTER phone'],
-         ['medicines', 'generic_name', 'VARCHAR(255) AFTER name'],
-         ['medicines', 'stock', 'INT DEFAULT 0 AFTER stock_quantity'],
-         ['medicines', 'min_stock_alert', 'INT DEFAULT 10 AFTER stock'],
-         ['medicines', 'category', 'VARCHAR(255) DEFAULT "Général" AFTER stock']
-       ];
-       for (const [t, c, d] of cols) {
-         try { await query(`ALTER TABLE ${t} ADD COLUMN ${c} ${d}`); } catch(e) {}
-         await sleep(500);
-       }
-       // Index
-       try { await query(`ALTER TABLE patients ADD INDEX idx_p_center (center_id)`); } catch(e) {}
-       try { await query(`ALTER TABLE tickets ADD INDEX idx_t_center (center_id)`); } catch(e) {}
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      await sleep(5000);
+      const cols = [
+        ['tickets', 'patient_id', 'VARCHAR(255) AFTER ticket_number'],
+        ['tickets', 'service_id', 'VARCHAR(255) AFTER patient_id'],
+        ['tickets', 'doctor_id', 'VARCHAR(255) AFTER service_id'],
+        ['tickets', 'patient_age', 'INT AFTER patient_name'],
+        ['tickets', 'patient_gender', 'VARCHAR(10) AFTER patient_age'],
+        ['tickets', 'patient_phone', 'VARCHAR(50) AFTER patient_gender'],
+        ['tickets', 'patient_address', 'TEXT AFTER patient_phone'],
+        ['tickets', 'amount', 'DECIMAL(10,2) DEFAULT 0.00 AFTER service_name'],
+        ['tickets', 'payment_method', 'VARCHAR(50) DEFAULT "CASH" AFTER amount'],
+        ['tickets', 'notes', 'TEXT AFTER payment_method'],
+        ['patients', 'firstName', 'VARCHAR(255) AFTER name'],
+        ['patients', 'lastName', 'VARCHAR(255) AFTER firstName'],
+        ['patients', 'dateOfBirth', 'DATE AFTER lastName'],
+        ['patients', 'gender', 'VARCHAR(10) AFTER dateOfBirth'],
+        ['patients', 'phone', 'VARCHAR(20) AFTER gender'],
+        ['patients', 'address', 'TEXT AFTER phone'],
+        ['medicines', 'generic_name', 'VARCHAR(255) AFTER name'],
+        ['medicines', 'stock', 'INT DEFAULT 0 AFTER stock_quantity'],
+        ['medicines', 'min_stock_alert', 'INT DEFAULT 10 AFTER stock'],
+        ['medicines', 'category', 'VARCHAR(255) DEFAULT "Général" AFTER stock']
+      ];
+      for (const [t, c, d] of cols) {
+        try { await query(`ALTER TABLE ${t} ADD COLUMN ${c} ${d}`); } catch (e) { }
+        await sleep(500);
+      }
+      // Index
+      try { await query(`ALTER TABLE patients ADD INDEX idx_p_center (center_id)`); } catch (e) { }
+      try { await query(`ALTER TABLE tickets ADD INDEX idx_t_center (center_id)`); } catch (e) { }
     }
-    
+
     runAsyncMigrations().catch(e => console.error('Migration error:', e));
 
     logToFile("INIT: OK");
@@ -139,7 +139,7 @@ export async function initializeDatabase() {
 // MODELS
 export class UserModel {
   static async findAll() { return await query('SELECT * FROM users ORDER BY name'); }
-  static async findById(id) { 
+  static async findById(id) {
     const res = await query('SELECT * FROM users WHERE id = ?', [id]);
     return res[0] || null;
   }
@@ -163,6 +163,31 @@ export class PatientModel {
     const res = await query('SELECT * FROM patients WHERE id = ?', [id]);
     return res[0] || null;
   }
+  static async findByTicketNumber(ticketNumber) {
+    return await query('SELECT * FROM patients WHERE ticket_number = ?', [ticketNumber]);
+  }
+  static async create(data) {
+    const pid = data.id || `p-${Date.now()}`;
+    const fullName = data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim();
+    await query(
+      `INSERT INTO patients (id, name, firstName, lastName, age, gender, phone, address, center_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [pid, fullName, data.firstName || '', data.lastName || '', data.age || 0, data.gender || 'M', data.phone || '', data.address || '', data.centerId || 'center-001']
+    );
+    return await this.findById(pid);
+  }
+  static async update(id, data) {
+    const updates = []; const params = [];
+    Object.keys(data).forEach(k => {
+      if (['name', 'firstName', 'lastName', 'age', 'gender', 'phone', 'address'].includes(k)) {
+        updates.push(`${k} = ?`); params.push(data[k]);
+      }
+    });
+    if (updates.length > 0) {
+      params.push(id);
+      await query(`UPDATE patients SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+    return await this.findById(id);
+  }
 }
 
 export class TicketModel {
@@ -177,6 +202,18 @@ export class TicketModel {
       serviceName: r.service_name || r.serviceName
     }));
   }
+  static async findById(id) {
+    const res = await query('SELECT * FROM tickets WHERE id = ?', [id]);
+    return res[0] || null;
+  }
+  static async create(data) {
+    const tid = data.id || `t-${Date.now()}`;
+    await query(
+      `INSERT INTO tickets (id, ticket_number, patient_name, patient_age, patient_gender, service_name, amount, status, center_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tid, data.ticketNumber || `T-${Date.now()}`, data.patientName || '', data.patientAge || 0, data.patientGender || 'M', data.serviceName || 'Consultation', data.amount || 0, data.status || 'WAITING', data.centerId || 'center-001']
+    );
+    return await this.findById(tid);
+  }
 }
 
 export class MedicineModel {
@@ -185,33 +222,45 @@ export class MedicineModel {
     return rows.map(r => ({
       ...r,
       genericName: r.genericName || r.generic_name || '',
-      stockQuantity: r.stockQuantity || r.stock_quantity || r.stock || 0
+      stockQuantity: r.stock_quantity || r.stockQuantity || r.stock || 0
     }));
+  }
+  static async findById(id) {
+    const res = await query('SELECT * FROM medicines WHERE id = ?', [id]);
+    return res[0] || null;
+  }
+  static async create(data) {
+    const mid = data.id || `m-${Date.now()}`;
+    await query(
+      `INSERT INTO medicines (id, name, generic_name, stock_quantity, price) VALUES (?, ?, ?, ?, ?)`,
+      [mid, data.name, data.genericName || '', data.stockQuantity || 0, data.price || 0]
+    );
+    return await this.findById(mid);
   }
 }
 
 // STUBS for missing but imported models
 // STUBS for missing but imported models
-export class ServiceModel { 
+export class ServiceModel {
   static async findAll() { return await query('SELECT * FROM services'); }
-  static async findById(id) { 
+  static async findById(id) {
     const res = await query('SELECT * FROM services WHERE id = ?', [id]);
     return res[0] || null;
   }
 }
-export class ConsultationModel { 
+export class ConsultationModel {
   static async findAll() { return []; }
   static async findById(id) { return null; }
-  static async create(data) { return {id: `cons-${Date.now()}`, ...data}; }
+  static async create(data) { return { id: `cons-${Date.now()}`, ...data }; }
 }
-export class SettingsModel { 
+export class SettingsModel {
   static async getAll() { return {}; }
   static async get(key, fallback = null) { return fallback; }
   static async set(key, val) { return true; }
 }
-export class LabResultModel { 
+export class LabResultModel {
   static async findAll() { return []; }
-  static async create(data) { return {id: `lab-${Date.now()}`, ...data}; }
+  static async create(data) { return { id: `lab-${Date.now()}`, ...data }; }
 }
 export class CenterModel {
   static async findById(id) { return { id: "center-001", name: "O'CLIC SANTE" }; }
