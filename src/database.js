@@ -296,7 +296,7 @@ export async function initializeDatabase() {
     await addColumnIfMissing('ticket_services', 'service_name', 'service_name VARCHAR(255) AFTER service_id');
     await addColumnIfMissing('ticket_services', 'created_at', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
 
-    await addColumnIfMissing('services', 'description', 'description TEXT AFTER name');
+        await addColumnIfMissing('services', 'description', 'description TEXT AFTER name');
     await addColumnIfMissing('services', 'category', 'category VARCHAR(255) DEFAULT "Consultation" AFTER name');
     await addColumnIfMissing('services', 'duration_minutes', 'duration_minutes INT DEFAULT 30 AFTER price');
     await addColumnIfMissing('services', 'center_id', 'center_id VARCHAR(255) DEFAULT "center-001" AFTER duration_minutes');
@@ -321,11 +321,17 @@ export async function initializeDatabase() {
     await addColumnIfMissing('patients', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
     
     await addColumnIfMissing('medicines', 'stock', 'stock INT DEFAULT 0 AFTER stock_quantity');
-    await addColumnIfMissing('medicines', 'minStock', 'minStock INT DEFAULT 10 AFTER min_stock_alert');
+    await addColumnIfMissing('medicines', 'generic_name', 'generic_name VARCHAR(255) AFTER name');
+    await addColumnIfMissing('medicines', 'description', 'description TEXT AFTER generic_name');
+    await addColumnIfMissing('medicines', 'category', "category VARCHAR(255) DEFAULT 'Général' AFTER description");
+    await addColumnIfMissing('medicines', 'unit', "unit VARCHAR(50) DEFAULT 'Boite' AFTER category");
+    await addColumnIfMissing('medicines', 'supplier', 'supplier VARCHAR(255) AFTER price');
+    await addColumnIfMissing('medicines', 'expiry_date', 'expiry_date DATE AFTER supplier');
+    await addColumnIfMissing('medicines', 'storage_conditions', 'storage_conditions VARCHAR(255) AFTER expiry_date');
+    await addColumnIfMissing('medicines', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    
     try { await query("UPDATE medicines SET stock = stock_quantity WHERE stock = 0 AND stock_quantity > 0"); } catch (e) { }
-    try { await query("UPDATE medicines SET minStock = min_stock_alert WHERE minStock = 10 AND min_stock_alert > 0"); } catch (e) { }
-    try { await query("UPDATE patients SET centerId = 'center-001' WHERE centerId IS NULL"); } catch (e) { }
-    try { await query("UPDATE patients SET phoneNumber = phone WHERE phoneNumber IS NULL AND phone IS NOT NULL"); } catch (e) { }
+    try { await query("UPDATE patients SET center_id = 'center-001' WHERE center_id IS NULL"); } catch (e) { }
 
     // Données par défaut (uniquement si les tables sont vides)
     const servicesCount = await query("SELECT COUNT(*) as count FROM services");
@@ -814,7 +820,8 @@ export class MedicineModel {
   }
 
   static async findById(id) {
-    return await query('SELECT * FROM medicines WHERE id = ?', [id]);
+    const res = await query('SELECT * FROM medicines WHERE id = ?', [id]);
+    return res && res.length > 0 ? res[0] : null;
   }
 
   static async findByCategory(category) {
