@@ -320,6 +320,24 @@ export async function initializeDatabase() {
       try { await query(`ALTER TABLE ${t} ADD COLUMN ${c} ${d}`); } catch(e) {}
     }
 
+    // Compatibilité multitenant : réinjecter center_id pour les données historiques
+    // (anciens enregistrements sans center_id ou avec centerId uniquement)
+    try {
+      await query(`UPDATE patients SET center_id = COALESCE(NULLIF(center_id, ''), NULLIF(centerId, ''), 'center-001')`);
+    } catch (e) {}
+    try {
+      await query(`UPDATE tickets SET center_id = COALESCE(NULLIF(center_id, ''), 'center-001')`);
+    } catch (e) {}
+    try {
+      await query(`UPDATE consultations SET center_id = COALESCE(NULLIF(center_id, ''), 'center-001')`);
+    } catch (e) {}
+    try {
+      await query(`UPDATE lab_results SET center_id = COALESCE(NULLIF(center_id, ''), 'center-001')`);
+    } catch (e) {}
+    try {
+      await query(`UPDATE sales SET center_id = COALESCE(NULLIF(center_id, ''), 'center-001')`);
+    } catch (e) {}
+
     // Migrations en arrière-plan (le reste)
     async function runAsyncMigrations() {
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
