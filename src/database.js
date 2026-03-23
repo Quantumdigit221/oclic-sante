@@ -10,12 +10,70 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 
-const dbConfig = {
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'u622816723_oclics',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'u622816723_oclics',
+function isPlaceholder(v = '') {
+  const s = String(v || '').trim();
+  if (!s) return true;
+  return (
+    s.startsWith('REPLACE_WITH_') ||
+    s.includes('your_') ||
+    s.includes('votre_') ||
+    s === 'changeme'
+  );
+}
+
+function buildDbConfigFromEnv() {
+  const fromUrl = {};
+  const rawUrl = process.env.DATABASE_URL || process.env.MYSQL_URL || '';
+  if (rawUrl) {
+    try {
+      const u = new URL(rawUrl);
+      fromUrl.host = u.hostname;
+      fromUrl.port = u.port ? Number(u.port) : undefined;
+      fromUrl.user = decodeURIComponent(u.username || '');
+      fromUrl.password = decodeURIComponent(u.password || '');
+      fromUrl.database = (u.pathname || '').replace(/^\//, '');
+    } catch {
+      // Ignore DATABASE_URL parsing errors and fallback to DB_* vars
+    }
+  }
+
+  return {
+    host: process.env.DB_HOST || fromUrl.host || '127.0.0.1',
+    port: Number(process.env.DB_PORT || fromUrl.port || 3306),
+    user: process.env.DB_USER || fromUrl.user || '',
+    password: process.env.DB_PASSWORD || fromUrl.password || '',
+    database: process.env.DB_NAME || fromUrl.database || '',
+    charset: 'utf8mb4',
+    timezone: '+00:00',
+    acquireTimeout: 10000,
+    connectionLimit: 15,
+    waitForConnections: true,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    ssl: (process.env.DB_SSL === 'true') ? { rejectUnauthorized: false } : undefined
+  };
+}
+
+const dbConfig = buildDbConfigFromEnv();
+
+function validateDbConfig(config) {
+  const bad =
+    isPlaceholder(config.host) ||
+    isPlaceholder(config.user) ||
+    isPlaceholder(config.password) ||
+    isPlaceholder(config.database);
+  if (bad) {
+    return "Configuration DB invalide: renseigner DB_HOST, DB_USER, DB_PASSWORD, DB_NAME (ou DATABASE_URL) avec des valeurs réelles.";
+  }
+  return null;
+}
+
+const mysqlConfig = {
+  host: dbConfig.host,
+  port: dbConfig.port,
+  user: dbConfig.user,
+  password: dbConfig.password,
+  database: dbConfig.database,
   charset: 'utf8mb4',
   timezone: '+00:00',
   acquireTimeout: 10000,
@@ -23,7 +81,7 @@ const dbConfig = {
   waitForConnections: true,
   queueLimit: 0,
   enableKeepAlive: true,
-  ssl: (process.env.DB_SSL === 'true') ? { rejectUnauthorized: false } : undefined
+  ssl: dbConfig.ssl
 };
 
 let pool;
@@ -73,11 +131,18 @@ export async function transaction(callback) {
 }
 
 export async function initializeDatabase() {
-  logToFile(`INIT: Connexion sur ${dbConfig.host}...`);
+  logToFile(`INIT: Connexion sur ${dbConfig.host}:${dbConfig.port}...`);
   try {
+    const configError = validateDbConfig(dbConfig);
+    if (configError) {
+      dbErrorLog = configError;
+      logToFile(`ECHEC CONFIG DB: ${configError}`);
+      return false;
+    }
+
     dbErrorLog = null;
     // CRITIQUE : mysql2/promise utilise .createPool() directement sur l'objet importé
-    pool = mysql.createPool(dbConfig);
+    pool = mysql.createPool(mysqlConfig);
 
 
     // Test simple
@@ -310,6 +375,7 @@ export async function initializeDatabase() {
     return true;
   } catch (err) {
     dbErrorLog = err.message;
+    logToFile(`ECHEC DB: ${err.message}`);
     return false;
   }
 }
