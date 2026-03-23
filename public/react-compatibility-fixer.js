@@ -58,9 +58,11 @@
     }
     function withAuthHeaders(input, init) {
         var token = getAuthToken();
-        if (!token) return [input, init];
         var urlStr = getInputUrl(input);
         if (!apiPathNeedsAuth(urlStr)) return [input, init];
+        if (!token) {
+            return [input, init];
+        }
         if (typeof input === 'string') {
             init = init && typeof init === 'object' ? init : {};
             var headers = new Headers(init.headers || {});
@@ -84,6 +86,32 @@
     // --- SMART FETCH (Auto-Retry on 503) ---
     const originalFetch = window.fetch;
     window.fetch = async function(input, init) {
+        var requestUrl = getInputUrl(input);
+        var needsAuth = apiPathNeedsAuth(requestUrl);
+        var tokenNow = getAuthToken();
+        if (needsAuth && !tokenNow) {
+            if (!window.__OCLIC_MISSING_TOKEN_REDIRECT__) {
+                window.__OCLIC_MISSING_TOKEN_REDIRECT__ = true;
+                try {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('authToken');
+                    sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('authToken');
+                } catch (e) {}
+                if (!window.location.hash.includes('/auth')) {
+                    console.warn('SESSION-RESCUER: token absent, redirection vers /auth');
+                    setTimeout(function() { window.location.hash = '#/auth'; }, 50);
+                }
+            }
+            return Promise.resolve(new Response(JSON.stringify({
+                success: false,
+                error: 'Token manquant',
+                code: 'AUTH_REQUIRED'
+            }), { status: 401, headers: { 'Content-Type': 'application/json' } }));
+        }
+
         var w = withAuthHeaders(input, init);
         input = w[0];
         init = w[1];
@@ -121,13 +149,19 @@
         }
     };
 
-    console.log('O-CLIC-SANTE-FIXER v2.7: JWT fetch + Smart-Fetch actifs...');
+    console.log('O-CLIC-SANTE-FIXER v2.8: JWT fetch + Smart-Fetch actifs...');
     
     // VERIFICATION DE LA BASE DE DONNÉES (FRONTEND)
-    fetch('/api/center').then(r => r.json()).then(center => {
+    fetch('/api/center').then(r => {
+        if (r.status === 401) {
+            console.warn('%cℹ️ SESSION: non authentifiée (token manquant).', 'color: #f59e0b; font-weight: bold;');
+            return null;
+        }
+        return r.json();
+    }).then(center => {
         if (center && (center.name || center.id)) {
             console.log('%c✅ BASE DE DONNÉES: CONNECTÉE (MySQL Hostinger)', 'color: #059669; font-weight: bold; font-size: 12px;');
-        } else {
+        } else if (center !== null) {
             console.warn('%c⚠️ BASE DE DONNÉES: MODE MÉMOIRE (Non persistante)', 'color: #d97706; font-weight: bold;');
         }
     }).catch(() => {
