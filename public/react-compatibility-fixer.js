@@ -2,18 +2,46 @@
     'use strict';
     
     // --- JWT : ajoute Authorization sur les appels /api/* (sauf login, health, verify) ---
+    function extractTokenFromObject(obj) {
+        if (!obj || typeof obj !== 'object') return null;
+        if (typeof obj.token === 'string' && obj.token) return obj.token;
+        if (typeof obj.accessToken === 'string' && obj.accessToken) return obj.accessToken;
+        if (obj.user && typeof obj.user === 'object') {
+            if (typeof obj.user.token === 'string' && obj.user.token) return obj.user.token;
+            if (typeof obj.user.accessToken === 'string' && obj.user.accessToken) return obj.user.accessToken;
+        }
+        return null;
+    }
     function getAuthToken() {
         try {
-            var t = localStorage.getItem('token') || localStorage.getItem('authToken') || sessionStorage.getItem('token');
-            if (t) return t;
-            var cu = localStorage.getItem('currentUser');
-            if (cu) {
-                var u = JSON.parse(cu);
-                if (u && typeof u.token === 'string') return u.token;
-                if (u && typeof u.accessToken === 'string') return u.accessToken;
+            var direct = localStorage.getItem('token')
+                || localStorage.getItem('authToken')
+                || localStorage.getItem('access_token')
+                || sessionStorage.getItem('token')
+                || sessionStorage.getItem('authToken');
+            if (direct) return direct;
+
+            var keys = ['currentUser', 'user', 'auth', 'session'];
+            for (var i = 0; i < keys.length; i++) {
+                var raw = localStorage.getItem(keys[i]) || sessionStorage.getItem(keys[i]);
+                if (!raw) continue;
+                try {
+                    var parsed = JSON.parse(raw);
+                    var token = extractTokenFromObject(parsed);
+                    if (token) return token;
+                } catch (e) {
+                    // ignore malformed JSON
+                }
             }
         } catch (e) {}
         return null;
+    }
+    function getInputUrl(input) {
+        if (typeof input === 'string') return input;
+        if (typeof URL !== 'undefined' && input instanceof URL) return input.href;
+        if (typeof Request !== 'undefined' && input instanceof Request) return input.url;
+        if (input && typeof input.url === 'string') return input.url;
+        return '';
     }
     function apiPathNeedsAuth(urlStr) {
         try {
@@ -31,13 +59,19 @@
     function withAuthHeaders(input, init) {
         var token = getAuthToken();
         if (!token) return [input, init];
-        var urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+        var urlStr = getInputUrl(input);
         if (!apiPathNeedsAuth(urlStr)) return [input, init];
         if (typeof input === 'string') {
             init = init && typeof init === 'object' ? init : {};
             var headers = new Headers(init.headers || {});
             if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + token);
             return [input, Object.assign({}, init, { headers: headers })];
+        }
+        if (typeof URL !== 'undefined' && input instanceof URL) {
+            init = init && typeof init === 'object' ? init : {};
+            var headersFromUrl = new Headers(init.headers || {});
+            if (!headersFromUrl.has('Authorization')) headersFromUrl.set('Authorization', 'Bearer ' + token);
+            return [input, Object.assign({}, init, { headers: headersFromUrl })];
         }
         if (typeof Request !== 'undefined' && input instanceof Request) {
             var h = new Headers(input.headers);
@@ -65,7 +99,7 @@
                 }
                 if (response.ok) {
                     try {
-                        var urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+                        var urlStr = getInputUrl(input);
                         var method = (init && init.method) || (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET');
                         if (method === 'POST' && urlStr && urlStr.indexOf('/api/login') !== -1) {
                             var data = await response.clone().json();
@@ -87,7 +121,7 @@
         }
     };
 
-    console.log('O-CLIC-SANTE-FIXER v2.6: JWT fetch + Smart-Fetch actifs...');
+    console.log('O-CLIC-SANTE-FIXER v2.7: JWT fetch + Smart-Fetch actifs...');
     
     // VERIFICATION DE LA BASE DE DONNÉES (FRONTEND)
     fetch('/api/center').then(r => r.json()).then(center => {

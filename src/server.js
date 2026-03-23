@@ -1424,6 +1424,11 @@ app.patch('/api/center', async (req, res) => {
   }
 });
 
+// Landing page de présentation (marketing)
+app.get('/landing', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/landing.html'));
+});
+
 // SPA fallback: serve index.html for non-API routes (fixes Cannot GET /patients/:id on refresh)
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
