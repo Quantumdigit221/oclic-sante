@@ -200,6 +200,7 @@ export async function initializeDatabase() {
       doctor_name VARCHAR(255),
       result TEXT,
       status VARCHAR(50),
+      center_id VARCHAR(255) DEFAULT 'center-001',
       notes TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
@@ -211,6 +212,7 @@ export async function initializeDatabase() {
       unit_price DECIMAL(10,2),
       total DECIMAL(10,2),
       status VARCHAR(50),
+      center_id VARCHAR(255) DEFAULT 'center-001',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     
@@ -224,6 +226,9 @@ export async function initializeDatabase() {
       rnis VARCHAR(255),
       capacity INT,
       pispi_alias VARCHAR(255),
+      is_active TINYINT(1) DEFAULT 0,
+      activated_at TIMESTAMP NULL,
+      activated_by VARCHAR(255) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -239,7 +244,12 @@ export async function initializeDatabase() {
       ['tickets', 'amount', 'DECIMAL(10,2) DEFAULT 0.00'],
       ['tickets', 'payment_method', 'VARCHAR(50) DEFAULT "CASH"'],
       ['medicines', 'generic_name', 'VARCHAR(255)'],
-      ['medicines', 'stock_quantity', 'INT DEFAULT 0']
+      ['medicines', 'stock_quantity', 'INT DEFAULT 0'],
+      ['lab_results', 'center_id', 'VARCHAR(255) DEFAULT "center-001"'],
+      ['sales', 'center_id', 'VARCHAR(255) DEFAULT "center-001"'],
+      ['centers', 'is_active', 'TINYINT(1) DEFAULT 0'],
+      ['centers', 'activated_at', 'TIMESTAMP NULL'],
+      ['centers', 'activated_by', 'VARCHAR(255) NULL']
     ];
     for (const [t, c, d] of vitalCols) {
       try { await query(`ALTER TABLE ${t} ADD COLUMN ${c} ${d}`); } catch(e) {}
@@ -285,7 +295,8 @@ export async function initializeDatabase() {
         ['medicines', 'idx_m_created', '(created_at)'],
         ['consultations', 'idx_c_created', '(created_at)'],
         ['lab_results', 'idx_lab_created', '(created_at)'],
-        ['sales', 'idx_sales_created', '(created_at)']
+        ['sales', 'idx_sales_created', '(created_at)'],
+        ['centers', 'idx_centers_active_created', '(is_active, created_at)']
       ];
       for (const [t, i, c] of indexList) {
         try { await query(`ALTER TABLE ${t} ADD INDEX ${i} ${c}`); } catch (e) { }
@@ -327,9 +338,13 @@ export class UserModel {
 export class PatientModel {
   static async findAll(centerId = null) {
     let q = 'SELECT * FROM patients';
-    if (centerId) q += ` WHERE center_id = '${centerId}' OR centerId = '${centerId}'`;
+    const params = [];
+    if (centerId) {
+      q += ' WHERE center_id = ? OR centerId = ?';
+      params.push(centerId, centerId);
+    }
     q += ' ORDER BY created_at DESC';
-    const rows = await query(q);
+    const rows = await query(q, params);
     return rows.map(r => ({
       ...r,
       name: r.name || `${r.firstName || ''} ${r.lastName || ''}`.trim() || 'Inconnu',
@@ -342,7 +357,10 @@ export class PatientModel {
     }));
   }
   static async findById(id) {
-    const res = await query('SELECT * FROM patients WHERE id = ?', [id]);
+    const centerId = arguments[1] || null;
+    const res = centerId
+      ? await query('SELECT * FROM patients WHERE id = ? AND (center_id = ? OR centerId = ?)', [id, centerId, centerId])
+      : await query('SELECT * FROM patients WHERE id = ?', [id]);
     return res[0] || null;
   }
   static async findByTicketNumber(ticketNumber) {
@@ -351,13 +369,15 @@ export class PatientModel {
   static async create(data) {
     const pid = data.id || `p-${Date.now()}`;
     const fullName = data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim();
+    const tenantCenterId = data.centerId || data.center_id || data.tenantId || 'center-001';
     await query(
       `INSERT INTO patients (id, name, firstName, lastName, age, gender, phone, address, center_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [pid, fullName, data.firstName || '', data.lastName || '', data.age || 0, data.gender || 'M', data.phone || '', data.address || '', data.centerId || 'center-001']
+      [pid, fullName, data.firstName || '', data.lastName || '', data.age || 0, data.gender || 'M', data.phone || '', data.address || '', tenantCenterId]
     );
     return await this.findById(pid);
   }
   static async update(id, data) {
+    const centerId = arguments[2] || null;
     const updates = []; const params = [];
     Object.keys(data).forEach(k => {
       if (['name', 'firstName', 'lastName', 'age', 'gender', 'phone', 'address'].includes(k)) {
@@ -366,15 +386,22 @@ export class PatientModel {
     });
     if (updates.length > 0) {
       params.push(id);
-      await query(`UPDATE patients SET ${updates.join(', ')} WHERE id = ?`, params);
+      if (centerId) {
+        params.push(centerId, centerId);
+        await query(`UPDATE patients SET ${updates.join(', ')} WHERE id = ? AND (center_id = ? OR centerId = ?)`, params);
+      } else {
+        await query(`UPDATE patients SET ${updates.join(', ')} WHERE id = ?`, params);
+      }
     }
-    return await this.findById(id);
+    return await this.findById(id, centerId);
   }
 }
 
 export class TicketModel {
-  static async findAll() {
-    const rows = await query('SELECT * FROM tickets ORDER BY created_at DESC');
+  static async findAll(centerId = null) {
+    const rows = centerId
+      ? await query('SELECT * FROM tickets WHERE center_id = ? ORDER BY created_at DESC', [centerId])
+      : await query('SELECT * FROM tickets ORDER BY created_at DESC');
     return rows.map(r => ({
       ...r,
       ticketNumber: r.ticket_number || r.ticketNumber || '',
@@ -387,15 +414,18 @@ export class TicketModel {
       status: r.status || 'WAITING'
     }));
   }
-  static async findById(id) {
-    const res = await query('SELECT * FROM tickets WHERE id = ?', [id]);
+  static async findById(id, centerId = null) {
+    const res = centerId
+      ? await query('SELECT * FROM tickets WHERE id = ? AND center_id = ?', [id, centerId])
+      : await query('SELECT * FROM tickets WHERE id = ?', [id]);
     return res[0] || null;
   }
   static async create(data) {
     const tid = data.id || `t-${Date.now()}`;
+    const tenantCenterId = data.centerId || data.center_id || data.tenantId || 'center-001';
     await query(
       `INSERT INTO tickets (id, ticket_number, patient_name, patient_age, patient_gender, service_name, amount, status, center_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tid, data.ticketNumber || `T-${Date.now()}`, data.patientName || '', data.patientAge || 0, data.patientGender || 'M', data.serviceName || 'Consultation', data.amount || 0, data.status || 'WAITING', data.centerId || 'center-001']
+      [tid, data.ticketNumber || `T-${Date.now()}`, data.patientName || '', data.patientAge || 0, data.patientGender || 'M', data.serviceName || 'Consultation', data.amount || 0, data.status || 'WAITING', tenantCenterId]
     );
     return await this.findById(tid);
   }
@@ -470,6 +500,8 @@ export class ConsultationModel {
     if (filters.patient_id) { where.push('patient_id = ?'); params.push(filters.patient_id); }
     if (filters.doctorId) { where.push('doctor_id = ?'); params.push(filters.doctorId); }
     if (filters.doctor_id) { where.push('doctor_id = ?'); params.push(filters.doctor_id); }
+    if (filters.centerId) { where.push('center_id = ?'); params.push(filters.centerId); }
+    if (filters.center_id) { where.push('center_id = ?'); params.push(filters.center_id); }
     
     if (where.length > 0) q += ' WHERE ' + where.join(' AND ');
     q += ' ORDER BY created_at DESC';
@@ -489,8 +521,10 @@ export class ConsultationModel {
       labOrders: r.lab_orders || '[]'
     }));
   }
-  static async findById(id) {
-    const res = await query('SELECT * FROM consultations WHERE id = ?', [id]);
+  static async findById(id, centerId = null) {
+    const res = centerId
+      ? await query('SELECT * FROM consultations WHERE id = ? AND center_id = ?', [id, centerId])
+      : await query('SELECT * FROM consultations WHERE id = ?', [id]);
     if (!res[0]) return null;
     const r = res[0];
     return {
@@ -506,10 +540,11 @@ export class ConsultationModel {
   }
   static async create(d) {
     const id = d.id || `consult-${Date.now()}`;
+    const tenantCenterId = d.centerId || d.center_id || d.tenantId || 'center-001';
     await query(
       `INSERT INTO consultations (id, ticket_id, patient_id, doctor_id, doctor_name, patient_name, temperature, weight, blood_pressure, pulse, diagnosis, symptoms, prescription, lab_orders, notes, center_id) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, d.ticketId || d.ticket_id, d.patientId || d.patient_id, d.doctorId || d.doctor_id, d.doctorName || d.doctor_name, d.patientName || d.patient_name, d.temperature, d.weight, d.bloodPressure || d.blood_pressure, d.pulse, d.diagnosis, d.symptoms, d.prescription, d.labOrders || d.lab_orders, d.notes, d.centerId || d.center_id]
+      [id, d.ticketId || d.ticket_id, d.patientId || d.patient_id, d.doctorId || d.doctor_id, d.doctorName || d.doctor_name, d.patientName || d.patient_name, d.temperature, d.weight, d.bloodPressure || d.blood_pressure, d.pulse, d.diagnosis, d.symptoms, d.prescription, d.labOrders || d.lab_orders, d.notes, tenantCenterId]
     );
     return await this.findById(id);
   }
@@ -541,6 +576,8 @@ export class LabResultModel {
     const params = [];
     const where = [];
     if (filters.patientId) { where.push('patient_id = ?'); params.push(filters.patientId); }
+    if (filters.centerId) { where.push('center_id = ?'); params.push(filters.centerId); }
+    if (filters.center_id) { where.push('center_id = ?'); params.push(filters.center_id); }
     if (where.length > 0) q += ' WHERE ' + where.join(' AND ');
     q += ' ORDER BY created_at DESC';
     const rows = await query(q, params);
@@ -556,15 +593,18 @@ export class LabResultModel {
   }
   static async create(d) {
     const id = d.id || `lab-${Date.now()}`;
+    const tenantCenterId = d.centerId || d.center_id || d.tenantId || 'center-001';
     await query(
-      `INSERT INTO lab_results (id, test_name, category, patient_id, patient_name, doctor_id, doctor_name, result, status, notes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, d.testName || d.test_name, d.category, d.patientId || d.patient_id, d.patientName || d.patient_name, d.doctorId || d.doctor_id, d.doctorName || d.doctor_name, d.result, d.status, d.notes]
+      `INSERT INTO lab_results (id, test_name, category, patient_id, patient_name, doctor_id, doctor_name, result, status, notes, center_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, d.testName || d.test_name, d.category, d.patientId || d.patient_id, d.patientName || d.patient_name, d.doctorId || d.doctor_id, d.doctorName || d.doctor_name, d.result, d.status, d.notes, tenantCenterId]
     );
-    return await this.findById(id);
+    return await this.findById(id, tenantCenterId);
   }
-  static async findById(id) {
-    const res = await query('SELECT * FROM lab_results WHERE id = ?', [id]);
+  static async findById(id, centerId = null) {
+    const res = centerId
+      ? await query('SELECT * FROM lab_results WHERE id = ? AND center_id = ?', [id, centerId])
+      : await query('SELECT * FROM lab_results WHERE id = ?', [id]);
     if (!res[0]) return null;
     const r = res[0];
     return {
@@ -577,6 +617,7 @@ export class LabResultModel {
     };
   }
   static async update(id, data) {
+    const centerId = arguments[2] || null;
     const updates = []; const params = [];
     Object.keys(data).forEach(k => {
       const dbKey = k === 'testName' ? 'test_name' : (k === 'patientId' ? 'patient_id' : (k === 'patientName' ? 'patient_name' : (k === 'doctorId' ? 'doctor_id' : (k === 'doctorName' ? 'doctor_name' : k))));
@@ -586,14 +627,22 @@ export class LabResultModel {
     });
     if (updates.length > 0) {
       params.push(id);
-      await query(`UPDATE lab_results SET ${updates.join(', ')} WHERE id = ?`, params);
+      if (centerId) {
+        params.push(centerId);
+        await query(`UPDATE lab_results SET ${updates.join(', ')} WHERE id = ? AND center_id = ?`, params);
+      } else {
+        await query(`UPDATE lab_results SET ${updates.join(', ')} WHERE id = ?`, params);
+      }
     }
-    return await this.findById(id);
+    return await this.findById(id, centerId);
   }
 }
 export class CenterModel {
-  static async findAll() {
-    return await query("SELECT * FROM centers ORDER BY created_at DESC");
+  static async findAll(includeInactive = true) {
+    if (includeInactive) {
+      return await query("SELECT * FROM centers ORDER BY created_at DESC");
+    }
+    return await query("SELECT * FROM centers WHERE is_active = 1 ORDER BY created_at DESC");
   }
   static async findById(id) {
     const res = await query('SELECT * FROM centers WHERE id = ?', [id]);
@@ -601,22 +650,35 @@ export class CenterModel {
   }
   static async create(d) {
     const id = d.id || `center-${Date.now()}`;
+    const isActive = d.isActive || d.is_active ? 1 : 0;
     await query(
-      `INSERT INTO centers (id, name, address, phone, email, director_name, rnis, capacity, pispi_alias) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, d.name, d.address, d.phone, d.email, d.directorName || d.director_name, d.rnis, d.capacity || 0, d.pispiAlias || d.pispi_alias]
+      `INSERT INTO centers (id, name, address, phone, email, director_name, rnis, capacity, pispi_alias, is_active) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, d.name, d.address, d.phone, d.email, d.directorName || d.director_name, d.rnis, d.capacity || 0, d.pispiAlias || d.pispi_alias, isActive]
+    );
+    return await this.findById(id);
+  }
+
+  static async setActivation(id, isActive, actorId = null) {
+    await query(
+      'UPDATE centers SET is_active = ?, activated_at = ?, activated_by = ? WHERE id = ?',
+      [isActive ? 1 : 0, isActive ? new Date() : null, isActive ? actorId : null, id]
     );
     return await this.findById(id);
   }
 }
 
 export class SalesModel {
-  static async findAll() {
+  static async findAll(centerId = null) {
     try {
-      return await query('SELECT * FROM sales ORDER BY created_at DESC');
+      return centerId
+        ? await query('SELECT * FROM sales WHERE center_id = ? ORDER BY created_at DESC', [centerId])
+        : await query('SELECT * FROM sales ORDER BY created_at DESC');
     } catch (e) {
       // Fallback si la colonne created_at manque (migration)
-      return await query('SELECT * FROM sales ORDER BY id DESC');
+      return centerId
+        ? await query('SELECT * FROM sales WHERE center_id = ? ORDER BY id DESC', [centerId])
+        : await query('SELECT * FROM sales ORDER BY id DESC');
     }
   }
 }
