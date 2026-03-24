@@ -161,10 +161,11 @@ app.get('/debug-db', authenticateToken, async (req, res) => {
     
     if (dbConnected) {
       dbStatus = 'CONNECTED';
-      // TEST D'ÉCRITURE REEL
+      // TEST D'ÉCRITURE REEL (nettoyage immédiat pour ne pas polluer la DB)
       const testId = 'test-' + Date.now();
       await query("INSERT INTO patients (id, name, firstName) VALUES (?, 'DIAGNOSTIC PROBE', 'TEST')", [testId]);
       const [verify] = await query("SELECT * FROM patients WHERE id = ?", [testId]);
+      await query('DELETE FROM patients WHERE id = ?', [testId]);
       const dbName = (await query('SELECT DATABASE() as db'))[0].db;
       const dbUser = (await query('SELECT USER() as user'))[0].user;
       
@@ -368,7 +369,15 @@ app.use('/api', (req, res, next) => {
   if (req.method === 'GET' && p === '/auth/verify') return next();
   return authenticateToken(req, res, next);
 });
-app.use('/api', resolveTenant);
+// resolveTenant: exclure les routes publiques (login, health, auth/verify)
+app.use('/api', (req, res, next) => {
+  if (req.method === 'OPTIONS') return next();
+  const p = req.path.replace(/\/$/, '') || '/';
+  if (req.method === 'POST' && p === '/login') return next();
+  if (req.method === 'GET' && p === '/health') return next();
+  if (req.method === 'GET' && p === '/auth/verify') return next();
+  return resolveTenant(req, res, next);
+});
 
 // Stats (Real DB Stats)
 app.get('/api/stats', async (req, res) => {
@@ -535,18 +544,6 @@ app.patch('/api/centers/:id/activation', requireSuperAdmin, async (req, res) => 
   }
 });
 
-// Patients
-app.get('/api/patients', async (req, res) => {
-  try {
-    if (!dbConnected) return res.json([]);
-    const patients = await PatientModel.findAll(req.tenantId);
-    res.json(patients);
-  } catch (error) {
-    console.error('Erreur get patients:', error);
-    res.json([]);
-  }
-});
-
 app.get('/api/patients/:id', async (req, res) => {
   try {
     if (!dbConnected) return res.status(404).json({ error: 'DB non connectée' });
@@ -555,21 +552,6 @@ app.get('/api/patients/:id', async (req, res) => {
     res.json(patient);
   } catch (error) {
     res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-app.post('/api/patients', async (req, res) => {
-  try {
-    console.log('[API] New Patient Request:', req.body);
-    if (dbConnected) {
-      const newPatient = await PatientModel.create({ ...req.body, centerId: req.tenantId, center_id: req.tenantId, tenantId: req.tenantId });
-      res.json(newPatient);
-    } else {
-      res.status(503).json({ error: 'Service en mode lecture seule (DB déconnectée)' });
-    }
-  } catch (error) {
-    console.error('Erreur create patient:', error);
-    res.status(500).json({ error: 'Erreur lors de la création du patient', detail: error.message });
   }
 });
 
@@ -585,31 +567,6 @@ app.put('/api/patients/:id', async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la mise à jour' });
   }
 });
-
-// Services
-app.get('/api/services', async (req, res) => {
-  try {
-    if (!dbConnected) return res.json([]);
-    const services = await ServiceModel.findAll();
-    res.json(services);
-  } catch (error) {
-    res.json([]);
-  }
-});
-
-app.post('/api/services', async (req, res) => {
-  try {
-    if (dbConnected) {
-      const newService = await ServiceModel.create(req.body);
-      res.json(newService);
-    } else {
-      res.status(503).json({ error: 'Lecture seule' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur' });
-  }
-});
-
 // Medicines
 app.get('/api/medicines', async (req, res) => {
   try {
@@ -617,37 +574,6 @@ app.get('/api/medicines', async (req, res) => {
     res.json(medicines);
   } catch (error) {
     console.error('[API] GET /api/medicines:', error.message);
-    res.json([]);
-  }
-});
-
-app.post('/api/medicines', async (req, res) => {
-  try {
-    if (dbConnected) {
-      const newMed = await MedicineModel.create(req.body);
-      res.json(newMed);
-    } else {
-      res.status(503).json({ error: 'Lecture seule' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur' });
-  }
-});
-
-// Consultations
-app.get('/api/consultations', async (req, res) => {
-  try {
-    if (!dbConnected) return res.json([]);
-    const filters = {
-      patientId: req.query.patientId || req.query.patient_id,
-      patientName: req.query.patientName || req.query.patient_name,
-      doctorId: req.query.doctorId || req.query.doctor_id,
-      date: req.query.date,
-      centerId: req.tenantId
-    };
-    const consultations = await ConsultationModel.findAll(filters);
-    res.json(consultations);
-  } catch (error) {
     res.json([]);
   }
 });
@@ -660,45 +586,6 @@ app.get('/api/consultations/:id', async (req, res) => {
     res.json(cons);
   } catch (error) {
     res.status(500).json({ error: 'Erreur' });
-  }
-});
-
-app.post('/api/consultations', async (req, res) => {
-  try {
-    if (dbConnected) {
-      const data = { ...req.body, id: req.body.id || `c-${Date.now()}`, centerId: req.tenantId, center_id: req.tenantId, tenantId: req.tenantId };
-      const newCons = await ConsultationModel.create(data);
-      res.json(newCons);
-    } else {
-      res.status(503).json({ error: 'Lecture seule' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur création consultation', detail: error.message });
-  }
-});
-
-// Lab Results
-app.get('/api/lab-results', async (req, res) => {
-  try {
-    if (!dbConnected) return res.json([]);
-    const labs = await LabResultModel.findAll({ ...(req.query || {}), centerId: req.tenantId });
-    res.json(labs);
-  } catch (error) {
-    res.json([]);
-  }
-});
-
-app.post('/api/lab-results', async (req, res) => {
-  try {
-    if (dbConnected) {
-      const newLab = await LabResultModel.create({ ...req.body, centerId: req.tenantId, center_id: req.tenantId, tenantId: req.tenantId });
-      invalidateTenantCache(req.tenantId);
-      res.json(newLab);
-    } else {
-      res.status(503).json({ error: 'Lecture seule' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Erreur', detail: error.message });
   }
 });
 
