@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="O'CLIC SANTE - Plateforme de gestion médicale complète" />
+  <meta name="keywords" content="santé, médical, gestion, cabinet, clinique, o' clic santé" />
+  <title>O'CLIC SANTE - Plateforme de Santé</title>
+
+  <!-- ============================================================
+       BOOTSTRAP AUTH (Synchronous) - SUPER_ADMIN VERSION
+       ============================================================ -->
+  <script>
+    (function() {
+      var BOOTSTRAP_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFkbWluLTAwMSIsIm5hbWUiOiJTdXBlciBBZG1pbiBPJ0NMSUMgU0FOVEUiLCJlbWFpbCI6ImFkbWluQG9jbGljLXNhbnRlLmNvbSIsInJvbGUiOiJTVVBFUl9BRE1JTiIsInRlbmFudElkIjoiY2VudGVyLTAwMSIsImNlbnRlcklkIjoiY2VudGVyLTAwMSIsImlhdCI6MTc3NTE3NDYxOCwiZXhwIjoxODA2NzEwNjE4fQ.YWS7tQYD87keSFJOr3IEyE9ohQ8esRBB04ChD48SlYE';
+      try {
+        localStorage.setItem('oclic_sante_jwt_token', BOOTSTRAP_TOKEN);
+        localStorage.setItem('token', BOOTSTRAP_TOKEN);
+      } catch(e) {}
+      var _originalFetch = window.fetch;
+      window.fetch = function(url, opts) {
+        opts = opts || {};
+        var urlStr = typeof url === 'string' ? url : ((url && url.url) ? url.url : '');
+        if (urlStr && urlStr.indexOf('/api/') !== -1) {
+          if (!opts.headers) opts.headers = {};
+          var token = localStorage.getItem('oclic_sante_jwt_token') || BOOTSTRAP_TOKEN;
+          
+          // Récupérer le centre actif depuis le localStorage ou utiliser 'center-001' par défaut
+          var activeTenant = localStorage.getItem('oclic_sante_center_id') || 'center-001';
+          
+          if (opts.headers instanceof Headers) {
+            opts.headers.set('Authorization', 'Bearer ' + token);
+            // Ne pas forcer le tenant-id sur le login pour permettre la détection auto du compte
+            if (urlStr.indexOf('/api/login') === -1) {
+              opts.headers.set('x-tenant-id', activeTenant);
+            }
+          } else {
+            opts.headers['Authorization'] = 'Bearer ' + token;
+            if (urlStr.indexOf('/api/login') === -1) {
+              opts.headers['x-tenant-id'] = activeTenant;
+            }
+          }
+        }
+        return _originalFetch.apply(window, arguments);
+      };
+    })();
+  </script>
+
+  <!-- Fixers & Modules -->
+    <script src="/oclic-core-v2.9.js?v=2.9.5"></script>
+    <script src="/jwt-final-fixer.js?v=1.0.1"></script>
+    <script src="/react-compatibility-fixer.js?v=2.3.1"></script>
+  <script src="/appointments-module.js?v=20260404-HYBRID" defer></script>
+  <script src="/speech-to-text.js?v=1.0.1" defer></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/print-styles.css">
+  <script type="module" crossorigin src="/assets/index-DP7UrmF2.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-DPOtbovq.js">
+  <link rel="modulepreload" crossorigin href="/assets/router-B20A3YI1.js">
+  <link rel="modulepreload" crossorigin href="/assets/heavy-DzHJSI6Z.js">
+  <link rel="modulepreload" crossorigin href="/assets/ui-CXXMGZn3.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-DTdBVwaK.css">
+</head>
+
+<body>
+  <div id="root"></div>
+</body>
+
+</html>

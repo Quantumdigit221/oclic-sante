@@ -1,0 +1,68 @@
+{
+  "patients": [
+    {
+      "firstName": "Test",
+      "lastName": "Creation",
+      "centerId": "center-001",
+      "createdAt": "2026-03-19T03:43:11.000Z"
+    },
+    {
+      "firstName": "ALI",
+      "lastName": "DF",
+      "centerId": "center-001",
+      "createdAt": "2026-03-19T03:37:08.000Z"
+    },
+    {
+      "firstName": "ali",
+      "lastName": "kjd",
+      "centerId": "center-001",
+      "createdAt": "2026-03-19T03:32:43.000Z"
+    },
+    {
+      "firstName": "Ali",
+      "lastName": "thia",
+      "centerId": "center-001",
+      "createdAt": "2026-03-19T03:30:00.000Z"
+    },
+    {
+      "firstName": "JH",
+      "lastName": "JHB",
+      "centerId": "center-001",
+      "createdAt": "2026-03-19T02:44:09.000Z"
+    }
+  ],
+  "services": [
+    {
+      "name": "Consultation Générale",
+      "price": "2000.00",
+      "centerId": "center-1773556242112-5fht3umcm"
+    },
+    {
+      "name": "Consultation Prénatale",
+      "price": "1500.00",
+      "centerId": "center-1773556242112-5fht3umcm"
+    },
+    {
+      "name": "Pansement Simple",
+      "price": "1000.00",
+      "centerId": "center-1773556242112-5fht3umcm"
+    },
+    {
+      "name": "Injection",
+      "price": "500.00",
+      "centerId": "center-1773556242112-5fht3umcm"
+    },
+    {
+      "name": "Échographie",
+      "price": "10000.00",
+      "centerId": "center-1773556242112-5fht3umcm"
+    }
+  ],
+  "tickets": [
+    {
+      "ticketNumber": "CS-20260314-8306",
+      "patientName": "Patient Un",
+      "amount": "5000.00"
+    }
+  ]
+}

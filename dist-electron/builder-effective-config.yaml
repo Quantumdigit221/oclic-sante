@@ -1,0 +1,21 @@
+directories:
+  output: dist-electron
+  buildResources: build
+appId: com.oclicsante.app
+productName: O'CLIC SANTE
+files:
+  - filter:
+      - dist/**/*
+      - public-electron/**/*
+      - public/LOGO.png
+      - node_modules/**/*
+      - package.json
+win:
+  target: nsis
+  icon: public/LOGO.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+electronVersion: 40.2.1

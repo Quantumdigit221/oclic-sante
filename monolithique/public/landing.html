@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>O'CLIC SANTE - Plateforme SaaS Multi-tenant</title>
+  <meta name="description" content="O'CLIC SANTE est une plateforme SaaS multi-tenant pour la gestion des centres de santé, patients, consultations, laboratoire, pharmacie et facturation." />
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #111a2e;
+      --muted: #9fb0d0;
+      --text: #eaf0ff;
+      --primary: #5b8cff;
+      --primary-dark: #3f6fe0;
+      --ok: #2fd39a;
+      --border: #243454;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, #1a2e5d 0%, var(--bg) 60%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0 26px;
+    }
+    .brand { font-weight: 700; letter-spacing: 0.2px; }
+    .pill {
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 28px;
+      align-items: center;
+      padding: 24px 0 20px;
+    }
+    .title {
+      margin: 0 0 14px;
+      font-size: clamp(30px, 5vw, 52px);
+      line-height: 1.08;
+      letter-spacing: -0.5px;
+    }
+    .subtitle { color: var(--muted); margin: 0 0 24px; font-size: 17px; }
+    .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      text-decoration: none;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+      border: none;
+      box-shadow: 0 10px 20px rgba(41, 94, 255, 0.25);
+    }
+    .card {
+      background: linear-gradient(180deg, #122041, #0f1a33);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .metric h3 { margin: 0; font-size: 24px; }
+    .metric p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .section { padding: 26px 0 6px; }
+    .section h2 { margin: 0 0 12px; font-size: 24px; }
+    .section p { margin: 0 0 16px; color: var(--muted); }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .feature {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .feature h3 { margin: 0 0 8px; font-size: 16px; }
+    .feature p { margin: 0; font-size: 14px; color: var(--muted); }
+    .list { margin: 10px 0 0; padding: 0 0 0 18px; color: var(--muted); }
+    .footer {
+      margin-top: 26px;
+      padding: 16px 0 26px;
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+    }
+    .ok { color: var(--ok); font-weight: 600; }
+    @media (max-width: 920px) {
+      .hero { grid-template-columns: 1fr; }
+      .features { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <div class="brand">O'CLIC SANTE</div>
+      <div class="pill">SaaS multi-tenant</div>
+    </nav>
+
+    <header class="hero">
+      <div>
+        <h1 class="title">La plateforme de gestion médicale pour vos centres de santé.</h1>
+        <p class="subtitle">
+          Centralisez l’accueil patient, les consultations, la pharmacie, le laboratoire,
+          la facturation et le pilotage des centres dans une seule application.
+        </p>
+        <div class="cta">
+          <a class="btn btn-primary" href="/index.html#/">Accéder à l'application</a>
+          <a class="btn" href="/api/health">Vérifier l'état API</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="metric-grid">
+          <div class="metric">
+            <h3>Patients</h3>
+            <p>Dossiers centralisés par centre</p>
+          </div>
+          <div class="metric">
+            <h3>Consultations</h3>
+            <p>Flux complet consultation + ordonnance</p>
+          </div>
+          <div class="metric">
+            <h3>Pharmacie</h3>
+            <p>Stock, alertes et ventes</p>
+          </div>
+          <div class="metric">
+            <h3>Laboratoire</h3>
+            <p>Demandes et résultats unifiés</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>Pourquoi O'CLIC SANTE ?</h2>
+      <p>Conçu pour les structures de santé qui ont besoin de rapidité, traçabilité et gouvernance multi-centres.</p>
+      <div class="features">
+        <article class="feature">
+          <h3>Multi-tenant sécurisé</h3>
+          <p>Isolation des données par tenant/centre avec contrôle d’accès et rôles.</p>
+        </article>
+        <article class="feature">
+          <h3>Super Admin</h3>
+          <p>Création des centres, activation/désactivation, et supervision centralisée.</p>
+        </article>
+        <article class="feature">
+          <h3>Performance orientée production</h3>
+          <p>API optimisée avec cache court, index SQL et endpoints métier ciblés.</p>
+        </article>
+      </div>
+      <ul class="list">
+        <li><span class="ok">Gestion patients</span> avec historique et suivi.</li>
+        <li><span class="ok">Ticketing & file d’attente</span> pour l’accueil et le tri.</li>
+        <li><span class="ok">Tableaux de bord</span> pour l’activité quotidienne.</li>
+      </ul>
+    </section>
+
+    <footer class="footer">
+      O'CLIC SANTE - Plateforme SaaS de gestion médicale.
+    </footer>
+  </div>
+</body>
+</html>

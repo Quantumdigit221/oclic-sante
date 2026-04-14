@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O'CLIC SANTE - Gestion des Tickets</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .metric-card {
+            @apply p-4 rounded-xl border border-slate-200;
+        }
+        .btn-primary {
+            @apply bg-teal-400 hover:bg-teal-500 text-slate-900 px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors font-medium;
+        }
+        .btn-secondary {
+            @apply p-2 text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200;
+        }
+        .status-badge {
+            @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+        }
+        .status-waiting { @apply bg-amber-100 text-amber-800; }
+        .status-progress { @apply bg-blue-100 text-blue-800; }
+        .status-completed { @apply bg-emerald-100 text-emerald-800; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { Search, Plus, Clock, CheckCircle, FileText, AlertTriangle, Printer } = lucide;
+
+        // Composant Tickets
+        function Tickets() {
+            const [tickets, setTickets] = useState([]);
+            const [services, setServices] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [filter, setFilter] = useState('');
+            const [showModal, setShowModal] = useState(false);
+            const [printTicket, setPrintTicket] = useState(null);
+
+            // Charger les données
+            useEffect(() => {
+                loadData();
+            }, []);
+
+            const loadData = async () => {
+                try {
+                    setLoading(true);
+                    const [ticketsRes, servicesRes] = await Promise.all([
+                        fetch('/api/tickets').then(r => r.json()).catch(() => ({ tickets: [] })),
+                        fetch('/api/services').then(r => r.json()).catch(() => ({ services: [] }))
+                    ]);
+
+                    setTickets(ticketsRes.tickets || []);
+                    setServices(servicesRes.services || []);
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    // Données de démonstration
+                    setTickets([
+                        {
+                            id: 'ticket-001',
+                            ticketNumber: 'TKT-20240315-001',
+                            patientName: 'Patient Test',
+                            patientAge: 35,
+                            patientGender: 'M',
+                            serviceName: 'Consultation générale',
+                            status: 'WAITING',
+                            amount: 5000,
+                            createdAt: new Date().toISOString()
+                        }
+                    ]);
+                    setServices([
+                        {
+                            id: 'service-001',
+                            name: 'Consultation générale',
+                            category: 'Consultation',
+                            price: 5000,
+                            isActive: true
+                        }
+                    ]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const formatAmount = (amount) => {
+                return new Intl.NumberFormat('fr-FR', {
+                    style: 'currency',
+                    currency: 'XOF'
+                }).format(amount || 0);
+            };
+
+            const format = (date, formatStr) => {
+                const d = new Date(date);
+                if (formatStr === 'HH:mm') {
+                    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                }
+                return d.toLocaleDateString('fr-FR');
+            };
+
+            const updateTicketStatus = async (ticketId, newStatus) => {
+                try {
+                    await fetch(`/api/tickets/${ticketId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus })
+                    });
+                    setTickets(prev => prev.map(t => 
+                        t.id === ticketId ? { ...t, status: newStatus } : t
+                    ));
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    // Simulation locale
+                    setTickets(prev => prev.map(t => 
+                        t.id === ticketId ? { ...t, status: newStatus } : t
+                    ));
+                }
+            };
+
+            const filteredTickets = tickets.filter(t =>
+                (t?.patientName || '').toLowerCase().includes((filter || '').toLowerCase()) ||
+                (t?.ticketNumber || '').toLowerCase().includes((filter || '').toLowerCase())
+            );
+
+            const MetricCard = ({ title, value, icon: Icon, color }) => (
+                <div className={`${color} metric-card`}>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-slate-600">{title}</p>
+                            <p className="text-2xl font-bold text-slate-900">{value}</p>
+                        </div>
+                        <Icon className="w-8 h-8 text-slate-400" />
+                    </div>
+                </div>
+            );
+
+            if (loading) {
+                return (
+                    <div className="flex items-center justify-center h-64">
+                        <div className="text-slate-500">Chargement...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="space-y-6 p-6">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900">Gestion des Tickets</h2>
+                            <p className="text-sm text-slate-500">File d'attente et facturation</p>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={loadData} className="btn-secondary">
+                                <AlertTriangle className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setShowModal(true)} className="btn-primary">
+                                <Plus className="w-4 h-4" />
+                                Nouveau Ticket
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-4 gap-6">
+                        <MetricCard
+                            title="En attente"
+                            value={tickets.filter(t => t.status === 'WAITING').length}
+                            icon={Clock}
+                            color="bg-amber-100"
+                        />
+                        <MetricCard
+                            title="En cours"
+                            value={tickets.filter(t => t.status === 'IN_PROGRESS').length}
+                            icon={FileText}
+                            color="bg-blue-100"
+                        />
+                        <MetricCard
+                            title="Terminés"
+                            value={tickets.filter(t => t.status === 'COMPLETED').length}
+                            icon={CheckCircle}
+                            color="bg-emerald-100"
+                        />
+                        <MetricCard
+                            title="Total Tickets"
+                            value={tickets.length}
+                            icon={FileText}
+                            color="bg-slate-100"
+                        />
+                    </div>
+
+                    {/* Filters */}
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Rechercher un patient ou n° ticket..."
+                                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Tickets Table */}
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">N° Ticket</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Patient</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Service</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Statut</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Heure</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200">
+                                    {filteredTickets.map((ticket) => (
+                                        <tr key={ticket.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 font-medium text-slate-900">{ticket.ticketNumber}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">
+                                                        {ticket.patientGender}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-slate-900">{ticket.patientName}</p>
+                                                        <p className="text-xs text-slate-500">{ticket.patientAge} ans</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-600">{ticket.serviceName}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`status-badge ${
+                                                    ticket.status === 'WAITING' ? 'status-waiting' :
+                                                    ticket.status === 'IN_PROGRESS' ? 'status-progress' :
+                                                    'status-completed'
+                                                }`}>
+                                                    {ticket.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-500">
+                                                {format(new Date(ticket.createdAt), 'HH:mm')}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        onClick={() => setPrintTicket(ticket)}
+                                                        className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
+                                                        title="Imprimer ticket"
+                                                    >
+                                                        <Printer className="w-4 h-4" />
+                                                    </button>
+                                                    {ticket.status === 'WAITING' && (
+                                                        <button
+                                                            onClick={() => updateTicketStatus(ticket.id, 'IN_PROGRESS')}
+                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                                            title="Démarrer consultation"
+                                                        >
+                                                            <Clock className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {ticket.status === 'IN_PROGRESS' && (
+                                                        <button
+                                                            onClick={() => updateTicketStatus(ticket.id, 'COMPLETED')}
+                                                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                                                            title="Terminer consultation"
+                                                        >
+                                                            <CheckCircle className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {filteredTickets.length === 0 && (
+                                <div className="p-8 text-center text-slate-500">
+                                    Aucun ticket trouvé.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Simple Modal Demo */}
+                    {showModal && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl w-full max-w-md p-6">
+                                <h3 className="text-xl font-bold text-slate-900 mb-4">Nouveau Ticket</h3>
+                                <p className="text-slate-600 mb-4">Fonctionnalité de démonstration</p>
+                                <button
+                                    onClick={() => setShowModal(false)}
+                                    className="w-full px-4 py-2 bg-teal-400 text-slate-900 rounded-lg font-medium"
+                                >
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Rendre l'application
+        ReactDOM.render(<Tickets />, document.getElementById('root'));
+    </script>
+
+    <!-- Babel pour transformer JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</body>
+</html>

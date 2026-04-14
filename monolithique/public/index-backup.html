@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="O'CLIC SANTE - Plateforme de gestion médicale complète" />
+  <meta name="keywords" content="santé, médical, gestion, cabinet, clinique, o' clic santé" />
+  <title>O'CLIC SANTE - Plateforme de Santé</title>
+
+  <!-- Bibliothèques PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+<!-- Script de correction locale des APIs -->
+  <script src="/local-api-fixer.js"></script>
+  
+  <!-- Script de synchronisation GitHub -->
+  <script src="/github-sync-deploy.js"></script>
+  
+  <!-- Script de configuration MySQL Hostinger -->
+  <script src="/hostinger-mysql-config.js"></script>
+  
+  <!-- Script de configuration Hostinger Node.js -->
+  <script src="/hostinger-config.js"></script>
+  
+  <!-- Script d'injection forcée de JWT -->
+  <script src="/force-jwt-injector.js"></script>
+  
+  <!-- Script d'interception automatique des requêtes -->
+  <script src="/auto-fetch-interceptor.js"></script>
+  
+  <!-- Script de résolution des problèmes JWT -->
+  <script src="/jwt-auth-fixer.js"></script>
+  
+  <!-- Script de mise à jour du dépôt GitHub -->
+  <script src="/github-repo-updater.js"></script>
+  
+  <!-- Script de mise à jour GitHub -->
+  <script src="/github-updater.js"></script>
+  
+  <!-- Script de gestion des erreurs 503 -->
+  <script src="/503-error-handler.js"></script>
+  
+  <!-- Script forcé pour configuration visible -->
+  <script src="/force-config.js"></script>
+  
+  <!-- Modèles d'impression améliorés -->
+  <script src="/enhanced-print-simple.js"></script>
+  
+  <!-- Script proéminent pour les revenus du jour -->
+  <script src="/revenus-jour-prominent.js"></script>
+  
+  <!-- Script pour le composant React des revenus du jour -->
+  <script src="/daily-revenue-component.js"></script>
+  
+  <!-- Script pour le composant React d'historique des consultations -->
+  <script src="/consultation-history-component.js"></script>
+  
+  <!-- Script pour le bouton d'accès à l'historique -->
+  <script src="/history-button.js"></script>
+  
+  <!-- Script pour le bouton d'historique sur la page prescriptions -->
+  <script src="/prescriptions-history-button.js"></script>
+  
+  <!-- Script pour les examens dépendants des consultations/tickets -->
+  <script src="/exam-dependent.js"></script>
+  
+  <!-- Modèle d'ordonnance simple et direct -->
+  <script src="/simple-ordonnance.js"></script>
+  
+  <!-- Interface simple et stable -->
+  <script src="/simple-interface.js"></script>
+  
+  <!-- Styles spécialisés pour l'impression -->
+  <link rel="stylesheet" href="/print-styles.css">
+
+  <!-- React Application Assets -->
+  
+  <!-- Global Date Interceptor - DÉSACTIVÉ POUR ÉVITER LA BOUCLE INFINIE -->
+  <!-- <script src="/global-date-interceptor.js"></script> -->
+  
+  <!-- Precision Date Fixer - DÉSACTIVÉ POUR ÉVITER LA BOUCLE INFINIE -->
+  <!-- <script src="/precision-date-fixer.js"></script> -->
+  
+  <!-- React Date Fixer - DÉSACTIVÉ POUR ÉVITER LA BOUCLE INFINIE -->
+  <!-- <script src="/react-date-fixer.js"></script> -->
+  
+  <!-- Ultimate Fixer - DÉSACTIVÉ POUR ÉVITER LA BOUCLE INFINIE -->
+  <!-- <script src="/ultimate-fixer.js"></script> -->
+  
+  <!-- GitHub Auto Push -->
+  <script src="/github-auto-push.js"></script>
+  
+  <!-- JWT Proper Fixer - NOUVEAU SYSTÈME JWT CORRECT -->
+  <script src="/jwt-proper-fixer.js"></script>
+  
+  <!-- JWT Server Fixer - DÉSACTIVÉ (remplacé par jwt-proper-fixer.js) -->
+  <!-- <script src="/jwt-server-fixer.js"></script> -->
+  
+  <!-- Date Fixer - DÉSACTIVÉ POUR ÉVITER LA BOUCLE INFINIE -->
+  <!-- <script src="/date-fixer.js"></script> -->
+  
+  <!-- Ticket Print Fixer -->
+  <script src="/ticket-print-fixer.js"></script>
+  
+  <!-- React Compatibility Fixer -->
+  <script src="/react-compatibility-fixer.js?v=20260323jwt3"></script>
+  
+  <!-- Speech to Text -->
+  <script src="/speech-to-text.js" defer></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    // Hotfix runtime: certains bundles référencent `fr` au lieu de `Fr`.
+    // On crée un binding global pour éviter le crash `ReferenceError: fr is not defined`.
+    if (typeof window.fr === 'undefined') {
+      window.fr = window.Fr || undefined;
+    }
+    if (typeof fr === 'undefined') {
+      var fr = window.fr;
+    }
+  </script>
+  <script type="module" crossorigin src="/assets/index-a41q9eH2.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-DPOtbovq.js">
+  <link rel="modulepreload" crossorigin href="/assets/router-B20A3YI1.js">
+  <link rel="modulepreload" crossorigin href="/assets/heavy-DzHJSI6Z.js">
+  <link rel="modulepreload" crossorigin href="/assets/ui-Bl8jPYp5.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-CQ98ZvSt.css">
+</head>
+
+<body>
+  <div id="root"></div>
+</body>
+
+</html>

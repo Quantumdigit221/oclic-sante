@@ -1,0 +1,5 @@
+{
+  "name": "Sénégal Santé - SaaS",
+  "description": "Plateforme complète de gestion hospitalière SaaS pour les postes de santé au Sénégal (Multi-tenant, Tickets, Pharmacie, Rapports).",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,97 @@
+­ƒî▒ D├®marrage de l'injection des donn├®es de d├®monstration...
+[LOG] INIT: Connexion sur 127.0.0.1:3306...
+Ignoring invalid configuration option passed to Connection: acquireTimeout. This is currently a warning, but in future versions of MySQL2, an error will be thrown if you pass an invalid configuration option to a Connection
+Ignoring invalid configuration option passed to Connection: timeout. This is currently a warning, but in future versions of MySQL2, an error will be thrown if you pass an invalid configuration option to a Connection
+[LOG] SUCC├êS: DB Connect├®e.
+Erreur SQL: Duplicate column name 'firstName'
+Erreur SQL: Duplicate column name 'lastName'
+Erreur SQL: Duplicate column name 'age'
+Erreur SQL: Duplicate column name 'gender'
+Erreur SQL: Duplicate column name 'phone'
+Erreur SQL: Duplicate column name 'address'
+Erreur SQL: Duplicate column name 'centerId'
+Erreur SQL: Duplicate column name 'center_id'
+Erreur SQL: Duplicate column name 'centerId'
+Erreur SQL: Duplicate column name 'center_id'
+Erreur SQL: Duplicate column name 'patient_id'
+Erreur SQL: Duplicate column name 'amount'
+Erreur SQL: Duplicate column name 'payment_method'
+Erreur SQL: Duplicate column name 'generic_name'
+Erreur SQL: Duplicate column name 'stock_quantity'
+Erreur SQL: Duplicate column name 'center_id'
+Erreur SQL: Duplicate column name 'centerId'
+Erreur SQL: Duplicate column name 'center_id'
+Erreur SQL: Duplicate column name 'center_id'
+Erreur SQL: Duplicate column name 'is_active'
+Erreur SQL: Duplicate column name 'activated_at'
+Erreur SQL: Duplicate column name 'activated_by'
+Erreur SQL: Duplicate column name 'center_id'
+Erreur SQL: Duplicate column name 'centerId'
+Erreur SQL: Duplicate column name 'tenant_id'
+Erreur SQL: Duplicate column name 'specialty'
+Erreur SQL: Duplicate column name 'rejection_reason'
+Erreur SQL: Duplicate column name 'rejected_by'
+Erreur SQL: Duplicate column name 'accepted_by'
+Erreur SQL: Duplicate column name 'sms_message_id'
+Erreur SQL: Duplicate column name 'sms_delivery_status'
+Erreur SQL: Duplicate column name 'sms_updated_at'
+Erreur SQL: Duplicate column name 'sms_opt_out'
+Erreur SQL: Duplicate column name 'sms_opt_out'
+Erreur SQL: Duplicate column name 'insurance_id'
+Erreur SQL: Duplicate column name 'insurance_coverage'
+Erreur SQL: Duplicate column name 'insurance_id'
+Erreur SQL: Duplicate column name 'claim_reference'
+Erreur SQL: Unknown column 'center_id' in 'field list'
+[LOG] INIT: OK
+­ƒº╣ Nettoyage des anciennes donn├®es...
+­ƒæÑ Cr├®ation des dossiers patients...
+­ƒÄ½ Cr├®ation des tickets dans la file d'attente...
+­ƒÅª Cr├®ation des organismes d'assurance & IPM...
+­ƒôæ Cr├®ation d'une facture assurance complexe (ex: 80/20)...
+Erreur SQL: Duplicate entry '1' for key 'PRIMARY'
+ÔØî Erreur lors du seeding: Duplicate entry '1' for key 'PRIMARY'
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e
+Erreur SQL: Base de donn├®es non initialis├®e

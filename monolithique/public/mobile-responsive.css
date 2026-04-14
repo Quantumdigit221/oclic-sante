@@ -1,0 +1,359 @@
+/* ============================================
+   O'CLIC SANTE - Styles Responsives Mobile
+   ============================================ */
+
+/* === BREAKPOINTS === */
+@media (max-width: 768px) {
+  /* === CONTENEUR PRINCIPAL === */
+  .dashboard-container,
+  .admin-dashboard,
+  .main-content {
+    padding: 0.5rem !important;
+    margin: 0 !important;
+  }
+
+  /* === HEADER === */
+  .header,
+  .navbar,
+  .top-bar {
+    padding: 0.5rem 1rem !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+
+  .header-title {
+    font-size: 1.2rem !important;
+    text-align: center !important;
+  }
+
+  /* === SIDEBAR / MENU === */
+  .sidebar,
+  .side-menu,
+  .nav-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .sidebar-item,
+  .nav-item {
+    padding: 0.75rem 1rem !important;
+    margin: 0.25rem 0 !important;
+    border-radius: 0.5rem !important;
+  }
+
+  .sidebar-icon {
+    margin-right: 0.75rem !important;
+    font-size: 1.1rem !important;
+  }
+
+  /* === CARDS ET WIDGETS === */
+  .card,
+  .widget,
+  .stat-card,
+  .info-card {
+    margin: 0.5rem 0 !important;
+    padding: 1rem !important;
+    border-radius: 0.75rem !important;
+  }
+
+  .card-title,
+  .widget-title {
+    font-size: 1rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .card-value,
+  .stat-value {
+    font-size: 1.5rem !important;
+    font-weight: 600 !important;
+  }
+
+  /* === TABLEAUX === */
+  .table-container,
+  .data-table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .table,
+  .data-table table {
+    min-width: 600px !important;
+    font-size: 0.875rem !important;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.5rem !important;
+    white-space: nowrap !important;
+  }
+
+  .table-actions {
+    display: flex !important;
+    gap: 0.25rem !important;
+    flex-direction: column !important;
+  }
+
+  .btn-action {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* === FORMULAIRES === */
+  .form-container,
+  .form-card {
+    padding: 1rem !important;
+  }
+
+  .form-group,
+  .form-field {
+    margin-bottom: 1rem !important;
+  }
+
+  .form-label {
+    font-size: 0.875rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    width: 100% !important;
+    padding: 0.75rem !important;
+    font-size: 1rem !important;
+    border-radius: 0.5rem !important;
+  }
+
+  /* === BOUTONS === */
+  .btn,
+  .button {
+    padding: 0.75rem 1.5rem !important;
+    font-size: 0.875rem !important;
+    border-radius: 0.5rem !important;
+    min-height: 44px !important; /* Touch target minimum */
+  }
+
+  .btn-primary,
+  .btn-success {
+    width: 100% !important;
+    margin: 0.5rem 0 !important;
+  }
+
+  .btn-group {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+
+  /* === GRILLES === */
+  .grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+  }
+
+  .col-2,
+  .col-3,
+  .col-4 {
+    grid-column: 1 !important;
+  }
+
+  /* === CONSULTATIONS ET TICKETS === */
+  .consultation-card,
+  .ticket-card {
+    padding: 1rem !important;
+    margin: 0.5rem 0 !important;
+    border-radius: 0.75rem !important;
+  }
+
+  .patient-info {
+    font-size: 0.875rem !important;
+  }
+
+  .consultation-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    margin-top: 1rem !important;
+  }
+
+  /* === MODALES === */
+  .modal,
+  .dialog {
+    width: 95% !important;
+    margin: 1rem !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  .modal-header {
+    padding: 1rem !important;
+    font-size: 1rem !important;
+  }
+
+  .modal-body {
+    padding: 1rem !important;
+  }
+
+  .modal-footer {
+    padding: 1rem !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+
+  /* === STATISTIQUES === */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+
+  .stat-item {
+    padding: 0.75rem !important;
+    text-align: center !important;
+  }
+
+  .stat-number {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+  }
+
+  .stat-label {
+    font-size: 0.75rem !important;
+    color: #6b7280 !important;
+  }
+
+  /* === MENU HAMBURGER === */
+  .mobile-menu-toggle {
+    display: block !important;
+    position: fixed !important;
+    top: 1rem !important;
+    left: 1rem !important;
+    z-index: 1000 !important;
+    background: #3b82f6 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    padding: 0.75rem !important;
+    cursor: pointer !important;
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(-100%) !important;
+  }
+
+  .sidebar.expanded {
+    transform: translateX(0) !important;
+  }
+
+  /* === CACHÉ SUR MOBILE === */
+  .desktop-only,
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* === VISIBLE SUR MOBILE === */
+  .mobile-only {
+    display: block !important;
+  }
+
+  /* === AJUSTEMENTS SPÉCIFIQUES === */
+  .container-fluid {
+    padding: 0.5rem !important;
+  }
+
+  .row {
+    margin: 0 !important;
+  }
+
+  .col,
+  [class*="col-"] {
+    padding: 0.25rem !important;
+  }
+
+  /* === AMÉLIORATIONS TOUCH === */
+  .clickable,
+  .btn,
+  .card {
+    cursor: pointer !important;
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.1) !important;
+  }
+
+  /* === SCROLLBAR PERSONNALISÉ === */
+  ::-webkit-scrollbar {
+    width: 4px !important;
+    height: 4px !important;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9 !important;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1 !important;
+    border-radius: 2px !important;
+  }
+}
+
+/* === PETITS ÉCRANS (<= 480px) === */
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 1rem !important;
+  }
+
+  .card-value,
+  .stat-value {
+    font-size: 1.25rem !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .btn {
+    padding: 1rem !important;
+    font-size: 0.875rem !important;
+  }
+
+  .table {
+    font-size: 0.75rem !important;
+  }
+
+  .modal {
+    width: 98% !important;
+    margin: 0.5rem !important;
+  }
+}
+
+/* === TABLETTES (768px - 1024px) === */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  .sidebar {
+    width: 200px !important;
+  }
+}
+
+/* === ORIENTATION PAYSAGE SUR MOBILE === */
+@media (max-width: 768px) and (orientation: landscape) {
+  .header {
+    padding: 0.25rem 0.5rem !important;
+  }
+
+  .mobile-menu-toggle {
+    top: 0.5rem !important;
+    left: 0.5rem !important;
+    padding: 0.5rem !important;
+  }
+
+  .card {
+    margin: 0.25rem 0 !important;
+    padding: 0.75rem !important;
+  }
+}

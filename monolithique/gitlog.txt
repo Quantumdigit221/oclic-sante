@@ -1,0 +1,5 @@
+5113af8 fix(frontend): Add strict error catching and alerts on LabResults save
+482547c fix(backend): Add lab-results missing DELETE route, fix model object stringification, add auth middleware
+250e484 fix(server): Move catch-all SPA route to end of file to fix 404 on /api/appointments
+a6a7087 feat(appointments): Add auto-complete patient search and fields for doctor and service in modal
+9336c0e fix(build): Fix Pharmacy.tsx unclosed brace and rebuild assets to restore React App on Hostinger
