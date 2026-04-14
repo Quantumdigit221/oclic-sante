@@ -151,7 +151,7 @@ export const ResourcesManagement = () => {
         />
         <StatCard 
           title={activeTab === 'expenses' ? "Dépense Moyenne" : activeTab === 'assets' ? "Maintenance" : "Valeur Stock"}
-          value={activeTab === 'expenses' ? "45,000 FCFA" : "92%" : "345,000 FCFA"}
+          value={activeTab === 'expenses' ? "45,000 FCFA" : activeTab === 'assets' ? "92%" : "345,000 FCFA"}
           icon={TrendingDown}
           iconColor="bg-teal-100 text-teal-600"
         />
