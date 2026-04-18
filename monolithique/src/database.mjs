@@ -1283,30 +1283,7 @@ export class ExamCategoryModel {
   }
 }
 
-export default { 
-  initializeDatabase, 
-  query, 
-  transaction, 
-  UserModel, 
-  TicketModel, 
-  PatientModel, 
-  MedicineModel, 
-  ServiceModel,
-  ConsultationModel,
-  LabResultModel,
-  ExamCategoryModel,
-  SettingsModel,
-  CenterModel,
-  SalesModel,
-  AppointmentModel,
-  InsuranceCompanyModel,
-  PatientInsuranceModel,
-  InsuranceTransactionModel,
-  ExpenseModel,
-  AssetModel,
-  InventoryModel,
-  getDbErrorLog 
-};
+
 export class InsuranceCompanyModel {
   static async findAll(centerId = null) {
     const q = centerId 
@@ -1461,3 +1438,28 @@ export class InventoryModel {
   }
   static async delete(id) { return await query('DELETE FROM inventory_general WHERE id = ?', [id]); }
 }
+
+export default { 
+  initializeDatabase, 
+  query, 
+  transaction, 
+  UserModel, 
+  TicketModel, 
+  PatientModel, 
+  MedicineModel, 
+  ServiceModel,
+  ConsultationModel,
+  LabResultModel,
+  ExamCategoryModel,
+  SettingsModel,
+  CenterModel,
+  SalesModel,
+  AppointmentModel,
+  InsuranceCompanyModel,
+  PatientInsuranceModel,
+  InsuranceTransactionModel,
+  ExpenseModel,
+  AssetModel,
+  InventoryModel,
+  getDbErrorLog 
+};

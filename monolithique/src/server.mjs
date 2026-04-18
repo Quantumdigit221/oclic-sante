@@ -2633,6 +2633,219 @@ app.post('/api/appointments/:id/send-reminder', authenticateToken, resolveTenant
   }
 });
 
+// =============================================
+// INSURANCE / IPM MODULE — API ROUTES
+// =============================================
+
+// --- Insurance Companies (CRUD) ---
+app.get('/api/insurance/companies', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.json([]);
+    const companies = await InsuranceCompanyModel.findAll(req.tenantId);
+    return res.json(companies);
+  } catch (e) {
+    console.error('[API] GET /api/insurance/companies:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/insurance/companies/:id', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(404).json({ error: 'DB non connectée' });
+    const company = await InsuranceCompanyModel.findById(req.params.id);
+    if (!company) return res.status(404).json({ error: 'Compagnie introuvable' });
+    return res.json(company);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/insurance/companies', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB non connectée' });
+    const data = { ...req.body, center_id: req.tenantId };
+    if (!data.name) return res.status(400).json({ error: 'Le nom de la compagnie est requis' });
+    const result = await InsuranceCompanyModel.create(data);
+    console.log(`[INSURANCE] ✅ Compagnie créée: ${data.name}`);
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error('[API] POST /api/insurance/companies:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/insurance/companies/:id', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB non connectée' });
+    const result = await InsuranceCompanyModel.update(req.params.id, req.body);
+    if (!result) return res.status(404).json({ error: 'Compagnie introuvable' });
+    console.log(`[INSURANCE] ✏️ Compagnie mise à jour: ${req.params.id}`);
+    return res.json(result);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/insurance/companies/:id', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB non connectée' });
+    await InsuranceCompanyModel.delete(req.params.id);
+    console.log(`[INSURANCE] 🗑️ Compagnie supprimée: ${req.params.id}`);
+    return res.json({ deleted: true, id: req.params.id });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Patient Insurances (Couverture patient) ---
+app.get('/api/insurance/patients', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.json([]);
+    const coverages = await PatientInsuranceModel.findAll(req.tenantId);
+    return res.json(coverages);
+  } catch (e) {
+    console.error('[API] GET /api/insurance/patients:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/insurance/patients/:patientId', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.json([]);
+    const coverages = await PatientInsuranceModel.findByPatientId(req.params.patientId);
+    return res.json(coverages);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/insurance/patients', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB non connectée' });
+    const data = { ...req.body, center_id: req.tenantId };
+    if (!data.patient_id || !data.insurance_company_id) {
+      return res.status(400).json({ error: 'patient_id et insurance_company_id sont requis' });
+    }
+    const insertId = await PatientInsuranceModel.create(data);
+    console.log(`[INSURANCE] ✅ Couverture patient créée: patient=${data.patient_id}`);
+    return res.status(201).json({ id: insertId, ...data });
+  } catch (e) {
+    console.error('[API] POST /api/insurance/patients:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/insurance/patients/:id', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB non connectée' });
+    await PatientInsuranceModel.update(req.params.id, req.body);
+    console.log(`[INSURANCE] ✏️ Couverture patient mise à jour: ${req.params.id}`);
+    return res.json({ id: parseInt(req.params.id), ...req.body });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/insurance/patients/:id', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB non connectée' });
+    await PatientInsuranceModel.delete(req.params.id);
+    console.log(`[INSURANCE] 🗑️ Couverture patient supprimée: ${req.params.id}`);
+    return res.json({ deleted: true, id: req.params.id });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Insurance Transactions (Réclamations / Facturations) ---
+app.get('/api/insurance/transactions', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.json([]);
+    const transactions = await InsuranceTransactionModel.findAll(req.tenantId);
+    return res.json(transactions);
+  } catch (e) {
+    console.error('[API] GET /api/insurance/transactions:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/insurance/transactions', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB non connectée' });
+    const data = { ...req.body, center_id: req.tenantId };
+    if (!data.patient_id || !data.insurance_company_id) {
+      return res.status(400).json({ error: 'patient_id et insurance_company_id sont requis' });
+    }
+    // Générer une référence de réclamation automatique si absente
+    if (!data.claim_reference) {
+      data.claim_reference = `CLM-${Date.now().toString(36).toUpperCase()}`;
+    }
+    if (!data.claim_date) {
+      data.claim_date = new Date().toISOString().split('T')[0];
+    }
+    const insertId = await InsuranceTransactionModel.create(data);
+    console.log(`[INSURANCE] ✅ Transaction créée: ref=${data.claim_reference}`);
+    return res.status(201).json({ id: insertId, ...data });
+  } catch (e) {
+    console.error('[API] POST /api/insurance/transactions:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.patch('/api/insurance/transactions/:id', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB non connectée' });
+    const { status, payment_date } = req.body;
+    if (!status) return res.status(400).json({ error: 'Le statut est requis' });
+    await InsuranceTransactionModel.updateStatus(req.params.id, status, payment_date);
+    console.log(`[INSURANCE] ✏️ Transaction ${req.params.id} → ${status}`);
+    return res.json({ id: parseInt(req.params.id), status, payment_date });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Insurance Stats / Dashboard ---
+app.get('/api/insurance/stats', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    if (!dbConnected) return res.json({ totalCompanies: 0, totalCoveredPatients: 0, totalClaims: 0, pendingClaims: 0, totalCoverageAmount: 0 });
+    
+    const [companies] = await Promise.all([
+      query('SELECT COUNT(*) as count FROM insurance_companies WHERE center_id = ? AND is_active = 1', [req.tenantId])
+    ]);
+    const [coveredPatients] = await Promise.all([
+      query('SELECT COUNT(DISTINCT patient_id) as count FROM patient_insurances WHERE center_id = ?', [req.tenantId])
+    ]);
+    const transStats = await query(
+      `SELECT 
+        COUNT(*) as total_claims,
+        SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as pending_claims,
+        SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) as approved_claims,
+        SUM(CASE WHEN status = 'PAID' THEN 1 ELSE 0 END) as paid_claims,
+        COALESCE(SUM(insurance_coverage_amount), 0) as total_coverage,
+        COALESCE(SUM(CASE WHEN status = 'PAID' THEN insurance_coverage_amount ELSE 0 END), 0) as paid_coverage,
+        COALESCE(SUM(CASE WHEN status = 'PENDING' THEN insurance_coverage_amount ELSE 0 END), 0) as pending_coverage
+       FROM insurance_transactions WHERE center_id = ?`, [req.tenantId]
+    );
+    const stats = transStats[0] || {};
+    
+    return res.json({
+      totalCompanies: companies[0]?.count || 0,
+      totalCoveredPatients: coveredPatients[0]?.count || 0,
+      totalClaims: stats.total_claims || 0,
+      pendingClaims: stats.pending_claims || 0,
+      approvedClaims: stats.approved_claims || 0,
+      paidClaims: stats.paid_claims || 0,
+      totalCoverageAmount: parseFloat(stats.total_coverage) || 0,
+      paidCoverageAmount: parseFloat(stats.paid_coverage) || 0,
+      pendingCoverageAmount: parseFloat(stats.pending_coverage) || 0
+    });
+  } catch (e) {
+    console.error('[API] GET /api/insurance/stats:', e.message);
+    return res.json({ totalCompanies: 0, totalCoveredPatients: 0, totalClaims: 0, pendingClaims: 0, totalCoverageAmount: 0 });
+  }
+});
+
 // Middleware global de gestion d'erreurs — force JSON pour /api et évite HTML 500
 app.use((err, req, res, next) => {
   const isApi = req.path.startsWith('/api');
