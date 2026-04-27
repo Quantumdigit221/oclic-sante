@@ -3,45 +3,40 @@
 /* Styles généraux pour l'impression */
 @media print {
     /* Cache tous les éléments sauf la zone d'impression */
-    body * {
-        visibility: hidden;
+    body > *:not(.print-area):not(script):not(style) {
+        display: none !important;
     }
     
     /* Montre seulement la zone d'impression */
-    .print-area, .print-area * {
-        visibility: visible;
-    }
-    
-    /* Positionne la zone d'impression */
     .print-area {
+        display: block !important;
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
-        padding: 20px;
+        margin: 0;
+        padding: 0;
         background: white !important;
     }
     
-    /* Cache les éléments non imprimables */
-    .no-print, .no-print * {
-        display: none !important;
-        visibility: hidden !important;
-    }
-    
-    /* Configuration de la page */
+    /* Configuration de la page par défaut (A4 pour ordonnances) */
     @page {
-        margin: 20mm;
+        margin: 10mm;
         size: A4;
-        orientation: portrait;
     }
-    
-    /* Polices pour l'impression */
-    body {
-        font-family: 'Times New Roman', Georgia, serif !important;
-        font-size: 12pt !important;
-        line-height: 1.4 !important;
-        color: #000 !important;
-        background: white !important;
+
+    /* Configuration spéciale pour les TICKETs (80mm) */
+    @page ticket-page {
+        size: 80mm auto;
+        margin: 0;
+    }
+
+    .thermal-ticket {
+        width: 80mm !important;
+        max-width: 80mm !important;
+        padding: 2mm !important;
+        margin: 0 auto !important;
+        page: ticket-page;
     }
     
     /* En-têtes et pieds de page */

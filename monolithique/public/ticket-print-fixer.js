@@ -83,57 +83,53 @@
                 <head>
                     <title>Ticket O'CLIC SANTE - ${ticketData.ticketNumber || ticketData.id}</title>
                     <style>
-                        body {
-                            font-family: 'Inter', Arial, sans-serif;
+                        @page {
+                            size: 80mm auto;
                             margin: 0;
-                            padding: 20px;
+                        }
+                        body {
+                            font-family: 'Courier New', monospace;
+                            margin: 0;
+                            padding: 5mm;
+                            width: 70mm; /* Effectif pour l'imprimante 80mm */
                             background: white;
                         }
                         .ticket-header {
                             text-align: center;
-                            border-bottom: 2px solid #333;
-                            padding-bottom: 10px;
-                            margin-bottom: 20px;
+                            border-bottom: 1px dashed #333;
+                            padding-bottom: 5px;
+                            margin-bottom: 10px;
                         }
                         .ticket-title {
-                            font-size: 18px;
+                            font-size: 16px;
                             font-weight: bold;
-                            color: #333;
                             margin: 0;
                         }
                         .ticket-subtitle {
-                            font-size: 12px;
-                            color: #666;
-                            margin: 5px 0 0 0;
+                            font-size: 10px;
+                            margin: 2px 0;
                         }
                         .ticket-info {
-                            margin: 20px 0;
+                            margin: 10px 0;
                         }
                         .info-row {
                             display: flex;
                             justify-content: space-between;
-                            margin: 8px 0;
-                            padding: 5px 0;
-                            border-bottom: 1px solid #eee;
+                            margin: 4px 0;
+                            font-size: 12px;
                         }
                         .info-label {
-                            font-weight: 600;
-                            color: #333;
-                            min-width: 120px;
-                        }
-                        .info-value {
-                            color: #666;
-                            text-align: right;
+                            font-weight: bold;
                         }
                         .ticket-footer {
-                            margin-top: 30px;
+                            margin-top: 15px;
                             text-align: center;
-                            font-size: 11px;
-                            color: #999;
+                            font-size: 10px;
+                            border-top: 1px dashed #333;
+                            padding-top: 5px;
                         }
                         @media print {
-                            body { margin: 0; padding: 10px; }
-                            .no-print { display: none; }
+                            body { width: 70mm; }
                         }
                     </style>
                 </head>

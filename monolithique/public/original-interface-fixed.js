@@ -197,11 +197,12 @@
         let content = `
             <html><head><title>Impression ${type}</title>
             <style>
-                body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
-                .header { text-align: center; border-bottom: 2px solid #000; margin-bottom: 30px; padding-bottom: 20px; }
-                .title { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 40px; text-decoration: underline; }
-                .info { margin-bottom: 30px; }
-                .footer { margin-top: 100px; text-align: right; }
+                @page { margin: 10mm; size: A4; }
+                body { font-family: Arial, sans-serif; padding: 10mm; line-height: 1.4; }
+                .header { text-align: center; border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
+                .title { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 20px; text-decoration: underline; }
+                .info { margin-bottom: 20px; }
+                .footer { margin-top: 40px; text-align: right; }
             </style></head><body>
             <div class="header">
                 <h1>${centerInfo.name}</h1>

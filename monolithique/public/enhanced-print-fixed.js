@@ -21,7 +21,7 @@
                         </div>
                         <div style="text-align: center; flex: 2;">
                             <div style="font-size: 26px; font-weight: bold; color: #1e293b; margin-bottom: 6px; letter-spacing: 1px;">
-                                ${config.name || 'CENTRE MEDICAL O\\'CLIC'}
+                                ${config.name || "CENTRE MEDICAL O'CLIC"}
                             </div>
                             <div style="font-size: 14px; color: #64748b; margin-bottom: 4px; font-style: italic;">
                                 ${config.subtitle || 'Plateforme de Gestion Médicale Intégrée'}
@@ -119,7 +119,8 @@
         const validite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR');
         
         return `
-            <div style="font-family: 'Times New Roman', Georgia, serif; line-height: 1.6; color: #000; padding: 30px; max-width: 800px; margin: 0 auto;">
+            <style>@page { margin: 10mm; size: A4; }</style>
+            <div style="font-family: 'Times New Roman', Georgia, serif; line-height: 1.4; color: #000; padding: 10mm; max-width: 800px; margin: 0 auto;">
                 ${generateEnhancedHeader(config, 'full')}
                 
                 <div style="text-align: center; margin-bottom: 25px; padding: 15px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 8px; border: 2px solid #16a34a;">
@@ -217,7 +218,7 @@
                     <div style="text-align: left;">
                         <div style="font-size: 10px; color: #64748b;">Cachet du centre:</div>
                         <div style="width: 80px; height: 80px; border: 2px solid #14b8a6; border-radius: 50%; margin-top: 5px; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #14b8a6; text-align: center;">
-                            ${config.name || 'O\\'CLIC'}
+                            ${config.name || "O'CLIC"}
                         </div>
                     </div>
                     
@@ -232,7 +233,7 @@
                 <div style="margin-top: 40px; text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0;">
                     <div style="font-size: 10px; color: #94a3b8;">
                         Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}<br>
-                        Ce document est un certificat médical confidentiel | ${config.name || 'CENTRE MEDICAL O\\'CLIC'}
+                        Ce document est un certificat médical confidentiel | ${config.name || "CENTRE MEDICAL O'CLIC"}
                     </div>
                 </div>
             </div>
@@ -245,7 +246,8 @@
         const examenId = 'EXAM-' + Date.now().toString().slice(-6);
         
         return `
-            <div style="font-family: 'Times New Roman', Georgia, serif; line-height: 1.6; color: #000; padding: 30px; max-width: 800px; margin: 0 auto;">
+            <style>@page { margin: 10mm; size: A4; }</style>
+            <div style="font-family: 'Times New Roman', Georgia, serif; line-height: 1.4; color: #000; padding: 10mm; max-width: 800px; margin: 0 auto;">
                 ${generateEnhancedHeader(config, 'full')}
                 
                 <div style="text-align: center; margin-bottom: 25px; padding: 15px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 8px; border: 2px solid #2563eb;">
@@ -372,7 +374,7 @@
                 <div style="margin-top: 40px; text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0;">
                     <div style="font-size: 10px; color: #94a3b8;">
                         Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}<br>
-                        Résultats confidentiels destinés uniquement au médecin traitant | ${config.name || 'CENTRE MEDICAL O\\'CLIC'}
+                        Résultats confidentiels destinés uniquement au médecin traitant | ${config.name || "CENTRE MEDICAL O'CLIC"}
                     </div>
                 </div>
             </div>
