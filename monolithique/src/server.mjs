@@ -279,11 +279,11 @@ function sortByCreatedAtDesc(list) {
 function normalizeTicketStatus(value) {
   const raw = String(value || '').trim().toUpperCase();
   if (!raw) return 'WAITING';
-  if (['WAITING', 'PENDING', 'EN_ATTENTE', 'QUEUE', 'QUEUED'].includes(raw)) return 'WAITING';
-  if (['IN_PROGRESS', 'INPROGRESS', 'EN_COURS', 'ONGOING'].includes(raw)) return 'IN_PROGRESS';
-  if (['COMPLETED', 'DONE', 'TERMINE', 'TERMINÉ', 'FINISHED'].includes(raw)) return 'COMPLETED';
-  if (['CANCELLED', 'CANCELED', 'ANNULE', 'ANNULÉ'].includes(raw)) return 'CANCELLED';
-  if (['REJECTED', 'REFUSE', 'REFUSÉ', 'REJETÉ', 'REJECTED_BY_DOCTOR'].includes(raw)) return 'REJECTED';
+  if (['WAITING', 'PENDING', 'EN_ATTENTE', 'EN ATTENTE', 'EN_ATTENTES', 'EN ATTENTES', 'QUEUE', 'QUEUED', 'ATTENTE'].includes(raw)) return 'WAITING';
+  if (['IN_PROGRESS', 'INPROGRESS', 'EN_COURS', 'EN COURS', 'ONGOING', 'EN_PROGRESSION', 'EN PROGRESSION', 'PROGRESSION'].includes(raw)) return 'IN_PROGRESS';
+  if (['COMPLETED', 'DONE', 'TERMINE', 'TERMINÉ', 'FINISHED', 'COMPLÉTÉ', 'COMPLETE'].includes(raw)) return 'COMPLETED';
+  if (['CANCELLED', 'CANCELED', 'ANNULE', 'ANNULÉ', 'CANCEL'].includes(raw)) return 'CANCELLED';
+  if (['REJECTED', 'REFUSE', 'REFUSÉ', 'REJETÉ', 'REJECTED_BY_DOCTOR', 'REFUS'].includes(raw)) return 'REJECTED';
   return raw;
 }
 
@@ -1252,7 +1252,7 @@ app.post('/api/tickets', async (req, res) => {
       patientPhone: req.body.patientPhone || req.body.patient_phone || null,
       patientAddress: req.body.patientAddress || req.body.patient_address || null,
       serviceName: serviceNames || req.body.serviceName || req.body.service_name || 'Consultation',
-      amount: totalAmount || req.body.amount || 0,
+      amount: req.body.amount || totalAmount || 0,
       paymentMethod: req.body.paymentMethod || req.body.payment_method || 'CASH',
       services: normalizedServices,
       status: normalizeTicketStatus(req.body.status || 'WAITING'),
@@ -1405,6 +1405,24 @@ app.post('/api/tickets/:id/status', async (req, res) => {
   }
 });
 
+app.patch('/api/tickets/:id', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (dbConnected) {
+      const updated = await TicketModel.update(id, req.body);
+      return res.json(updated);
+    }
+    const store = getMemoryTenantStore(req.tenantId);
+    const idx = store.tickets.findIndex(t => String(t.id) === String(id));
+    if (idx < 0) return res.status(404).json({ error: 'Ticket non trouvé' });
+    store.tickets[idx] = { ...store.tickets[idx], ...req.body, updatedAt: new Date().toISOString() };
+    res.json(store.tickets[idx]);
+  } catch (error) {
+    console.error('[PATCH ticket]:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du ticket' });
+  }
+});
+
 // =============================================
 // FILE D'ATTENTE (Waiting List)
 // =============================================
@@ -1426,7 +1444,7 @@ app.get('/api/tickets/waiting-list', authenticateToken, resolveTenant, async (re
       LEFT JOIN patients p ON t.patient_id = p.id 
       LEFT JOIN services s ON t.service_id = s.id 
       WHERE (t.center_id = ? OR t.center_id = ? OR t.center_id = ?) 
-      AND UPPER(t.status) IN ('WAITING', 'IN_PROGRESS', 'EN_ATTENTE', 'EN_COURS', 'PENDING', 'QUEUE', 'QUEUED') 
+      AND UPPER(t.status) IN ('WAITING', 'IN_PROGRESS', 'EN_ATTENTE', 'EN ATTENTE', 'EN_ATTENTES', 'EN ATTENTES', 'EN_COURS', 'EN COURS', 'PENDING', 'QUEUE', 'QUEUED', 'EN_PROGRESSION', 'EN PROGRESSION')
       ORDER BY t.created_at ASC`;
     
     const tickets = await query(q, [currentTenant, familyId, paddedId]);

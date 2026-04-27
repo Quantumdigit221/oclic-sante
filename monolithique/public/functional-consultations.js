@@ -63,7 +63,13 @@
                     }) : [];
 
                     // S'assurer que la réponse a toujours des tableaux valides et normalisés
-                    const fallbackData = normalizeItems(Array.isArray(data.consultations) ? data.consultations : (Array.isArray(data) ? data : []));
+                    const rawItems = Array.isArray(data.consultations) ? data.consultations : 
+                                    Array.isArray(data.tickets) ? data.tickets : 
+                                    Array.isArray(data.data) ? data.data : 
+                                    Array.isArray(data.items) ? data.items : 
+                                    (Array.isArray(data) ? data : []);
+                    
+                    const fallbackData = normalizeItems(rawItems);
                     const enhancedData = {
                         consultations: fallbackData,
                         tickets: fallbackData,

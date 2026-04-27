@@ -789,6 +789,42 @@ export class TicketModel {
     await query(`UPDATE tickets SET ${fields.join(', ')} WHERE id = ?`, vals);
     return await this.findById(id);
   }
+  static async update(id, data) {
+    const fields = [];
+    const vals = [];
+    const mapping = {
+      patientName: 'patient_name',
+      patientAge: 'patient_age',
+      patientGender: 'patient_gender',
+      serviceName: 'service_name',
+      amount: 'amount',
+      status: 'status',
+      insuranceId: 'insurance_id',
+      insurance_id: 'insurance_id',
+      insuranceCoverage: 'insurance_coverage',
+      insurance_coverage: 'insurance_coverage',
+      patientId: 'patient_id',
+      patient_id: 'patient_id',
+      serviceId: 'service_id',
+      service_id: 'service_id',
+      doctorId: 'doctor_id',
+      rejectionReason: 'rejection_reason',
+      paymentMethod: 'payment_method'
+    };
+
+    for (const [key, col] of Object.entries(mapping)) {
+      if (data[key] !== undefined) {
+        fields.push(`${col} = ?`);
+        vals.push(data[key]);
+      }
+    }
+
+    if (fields.length === 0) return await this.findById(id);
+    
+    vals.push(id);
+    await query(`UPDATE tickets SET ${fields.join(', ')} WHERE id = ?`, vals);
+    return await this.findById(id);
+  }
   static async getServices(ticketId) {
     return await query('SELECT * FROM ticket_services WHERE ticket_id = ?', [ticketId]);
   }
