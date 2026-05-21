@@ -784,104 +784,53 @@ export const Tickets = () => {
         <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
             <div className="overflow-y-auto p-4 flex justify-center bg-slate-100">
-              {/* Receipt Container - 80mm approx width */}
-              <div id="print-area" className="bg-white w-[302px] p-4 text-black font-mono text-sm shadow-md">
+              {/* Receipt Container */}
+              <div id="print-area" className="bg-white w-[302px] p-6 text-black font-mono text-sm shadow-md">
                 {/* Header */}
-                <div className="text-center border-b-2 border-dashed border-black pb-4 mb-4">
-                  <div className="font-bold text-lg uppercase leading-tight mb-1 text-black">{currentCenter?.name}</div>
-                  <div className="text-xs text-black mb-1">{currentCenter?.address}</div>
-                  <div className="text-xs text-black">Tel: {currentCenter?.phone}</div>
-                  {currentCenter?.email && <div className="text-xs text-black">{currentCenter?.email}</div>}
-                  {currentCenter?.rnis && <div className="text-[10px] text-black mt-1">RNIS: {currentCenter.rnis}</div>}
-                </div>
-
-                {/* Ticket Info */}
-                <div className="text-center mb-4">
-                  <div className="text-xs text-black uppercase tracking-wider mb-1">Numéro de Ticket</div>
-                  <div className="text-2xl font-black tracking-widest text-black">{printTicket.ticketNumber?.split('-').pop()}</div>
-                  {/* Barcode simulation with CSS Gradient (High Contrast) */}
-                  <div className="h-10 bg-black w-full mx-auto my-2" style={{ backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, white 2px, white 4px)' }}></div>
-                  <div className="text-[10px] text-black">{printTicket.ticketNumber}</div>
-                  <div className="text-xs mt-1 text-black">{safeFormatDate(printTicket.createdAt, 'dd/MM/yyyy HH:mm')}</div>
-                </div>
-
-                {/* Patient Info */}
-                <div className="border-b border-dashed border-black pb-4 mb-4">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-xs font-bold text-black">PATIENT</span>
+                <div className="text-center border-b-2 border-black pb-4 mb-4">
+                  <div className="font-black text-xl uppercase leading-tight text-black">{currentCenter?.name}</div>
+                  <div className="text-base font-bold text-black mt-1">TEL: {currentCenter?.phone || 'Non renseigné'}</div>
+                  <div className="text-xs font-medium text-black mt-2">
+                    DATE: {safeFormatDate(printTicket.createdAt, 'dd/MM/yyyy HH:mm')}
                   </div>
-                  <div className="font-bold text-black">{printTicket.patientName}</div>
-                  <div className="text-xs text-black">{printTicket.patientAge} ans / {printTicket.patientGender}</div>
-                  {printTicket.patientPhone && <div className="text-xs text-black">{printTicket.patientPhone}</div>}
                 </div>
 
-                {/* Service Info */}
-                <div className="border-b border-dashed border-black pb-4 mb-4">
-                  <div className="mb-3">
-                    <div className="font-bold text-black mb-2 underline">DÉTAIL DES PRESTATIONS :</div>
-                    <div className="text-sm text-black space-y-2">
-                      {Array.isArray(printTicket.services) && printTicket.services.length > 0 ? (
-                        printTicket.services.map((s, index) => (
-                          <div key={index} className="flex justify-between items-start gap-2">
-                            <span className="flex-1 text-xs leading-none">{s.name}</span>
-                            <span className="font-mono text-xs whitespace-nowrap">{formatAmount(parseFloat(String(s.price || s.amount || 0)))}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex justify-between items-start gap-2">
-                          <span className="flex-1 text-xs leading-none">{printTicket.serviceName}</span>
-                          <span className="font-mono text-xs">{formatAmount(printTicket.amount || 0)}</span>
+                {/* Patient */}
+                <div className="mb-4">
+                  <div className="text-[10px] font-bold uppercase text-black">Patient :</div>
+                  <div className="text-lg font-black uppercase text-black">{printTicket.patientName}</div>
+                </div>
+
+                {/* Services */}
+                <div className="border-t border-b-2 border-black py-4 mb-4">
+                  <div className="font-black text-xs mb-3 underline uppercase">Prestations :</div>
+                  <div className="space-y-3">
+                    {Array.isArray(printTicket.services) && printTicket.services.length > 0 ? (
+                      printTicket.services.map((s, index) => (
+                        <div key={index} className="flex justify-between items-start gap-4">
+                          <span className="flex-1 font-bold leading-tight">{s.name}</span>
+                          <span className="font-black whitespace-nowrap">{formatAmount(parseFloat(String(s.price || s.amount || 0)))}</span>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center mb-2 pt-2 border-t border-slate-100">
-                    <span className="font-bold text-black">Sous-total:</span>
-                    <span className="font-bold text-black">{formatAmount(printTicket.amount || 0)}</span>
-                  </div>
-
-                  {printTicket.doctorId && (
-                    <div className="text-xs text-black italic">
-                      Médecin: Dr. {users.find(u => u.id === printTicket.doctorId)?.name}
-                    </div>
-                  )}
-                  <div className="text-xs text-black mt-1">
-                    Paiement: {printTicket.paymentMethod === 'MOBILE_MONEY' ? 'Mobile Money' : printTicket.paymentMethod === 'CARD' ? 'Carte' : 'Espèces'}
-                  </div>
-                  
-                  {printTicket.insuranceId && (
-                    <div className="mt-2 border-t border-dashed border-black pt-2">
-                       <div className="flex justify-between items-center text-xs italic text-black">
-                        <span>Assurance:</span>
-                        <span className="font-bold">{insuranceCompanies.find(c => String(c.id) === String(printTicket.insuranceId))?.name || 'Inconnue'}</span>
+                      ))
+                    ) : (
+                      <div className="flex justify-between items-start gap-4">
+                        <span className="flex-1 font-bold leading-tight">{printTicket.serviceName}</span>
+                        <span className="font-black">{formatAmount(printTicket.amount || 0)}</span>
                       </div>
-                      <div className="flex justify-between items-center text-xs italic text-black">
-                        <span>Part Assurance ({printTicket.insuranceCoverage}%):</span>
-                        <span>-{formatAmount((parseFloat(String(printTicket.amount || 0)) * parseFloat(String(printTicket.insuranceCoverage || 0))) / 100)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm font-bold border-t border-dashed border-black mt-1 pt-1 text-black">
-                        <span>NET À PAYER (PATIENT)</span>
-                        <span>{formatAmount(parseFloat(String(printTicket.amount || 0)) * (1 - parseFloat(String(printTicket.insuranceCoverage || 0)) / 100))}</span>
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
-                {/* Total */}
-                <div className="flex justify-between items-center text-lg font-bold border-b-2 border-black pb-4 mb-4 text-black">
-                  <span>TOTAL</span>
-                  <span>{formatAmount(printTicket.amount || 0)}</span>
-                </div>
-
-                {/* Footer */}
-                <div className="text-center text-xs space-y-4">
-                  <div className="h-16 border border-black rounded flex items-center justify-center text-black italic">
-                    Signature / Cachet
+                {/* Totals */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-black">
+                    <span className="font-black text-xs">TOTAL À PAYER :</span>
+                    <span className="text-xl font-black">{formatAmount(printTicket.amount || 0)}</span>
                   </div>
-                  <div>
-                    <p className="font-bold text-black">Bon rétablissement !</p>
-                    <p className="text-[10px] text-black mt-1">Conservez ce ticket pour votre dossier.</p>
+                  
+                  <div className="flex justify-between items-center border-t-4 border-double border-black pt-3 text-black">
+                    <span className="font-black text-xs">MONTANT PAYÉ :</span>
+                    <span className="text-xl font-black">{formatAmount(printTicket.amount || 0)}</span>
                   </div>
                 </div>
               </div>
@@ -910,6 +859,7 @@ export const Tickets = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
