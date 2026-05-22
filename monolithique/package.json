@@ -32,5 +32,8 @@
     "react"
   ],
   "author": "O'CLIC SANTE",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  }
 }
