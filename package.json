@@ -18,13 +18,16 @@
     "build": "npm run build --workspaces",
     "build:frontend": "npm run build --workspace=@o-clic-sante/frontend",
     "build:backend": "npm run build --workspace=@o-clic-sante/backend",
-    "start": "node index.js",
+    "start": "node app.js",
     "test": "npm run test --workspaces",
     "lint": "npm run lint --workspaces",
     "install:prod": "npm install --production",
     "electron": "npm run electron --workspace=@o-clic-sante/frontend",
     "electron-dev": "concurrently \"npm run dev\" \"npm run electron --workspace=@o-clic-sante/frontend\"",
     "electron-build": "npm run build && npm run electron-build --workspace=@o-clic-sante/frontend"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
