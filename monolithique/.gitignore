@@ -64,3 +64,21 @@ hostinger-config.js
 # Backup files
 *.bak
 *.backup
+
+# Fichiers temporaires de debug / extraction bundle
+scan-bundle.js
+scan-min.js
+*-chunk.txt
+*-section.txt
+*-modal.txt
+push_error*.txt
+output*.txt
+describe*.txt
+hash.txt
+stat.txt
+gitlog.txt
+result*.txt
+services.txt
+users.txt
+data.txt
+patients-list.txt
