@@ -50,14 +50,15 @@
   <!-- Fixers & Modules -->
     <script src="/oclic-core-v2.9.js?v=2.9.5"></script>
     <script src="/jwt-final-fixer.js?v=1.0.1"></script>
-    <script src="/react-compatibility-fixer.js?v=2.3.5"></script>
+    <script src="/react-compatibility-fixer.js?v=2.4.0"></script>
+  <script src="/professional-receipt.js?v=3.0.0"></script>
   <script src="/appointments-module.js?v=20260404-HYBRID" defer></script>
   <script src="/speech-to-text.js?v=1.0.1" defer></script>
   <script src="/insurance-module.js?v=2.0.0" defer></script>
   <script src="/ticket-modifier-ui.js?v=1.0.0" defer></script>
   
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/print-styles.css?v=2.1">
+  <link rel="stylesheet" href="/print-styles.css?v=2.2">
   <script type="module" crossorigin src="/assets/index-DP7UrmF2.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/vendor-DPOtbovq.js">
   <link rel="modulepreload" crossorigin href="/assets/router-B20A3YI1.js">
@@ -68,6 +69,8 @@
 
 <body>
   <div id="root"></div>
+  <!-- Dernier script : impose le ticket minimal sur tous les flux d'impression -->
+  <script src="/ticket-print-minimal.js?v=1.0.1"></script>
 </body>
 
 </html>

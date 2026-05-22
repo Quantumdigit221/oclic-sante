@@ -4,8 +4,8 @@
   "description": "O'CLIC SANTE - Application Monolithique Complète",
   "main": "app.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs",
     "start-db": "node src/server-db.js",
     "dev-db": "node --watch src/server-db.js",
     "setup-db": "scripts\\setup-database.bat",

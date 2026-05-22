@@ -737,60 +737,45 @@ export const Tickets = () => {
               </button>
             </div>
 
-            <div className="border border-slate-200 rounded-xl p-8 mb-8 bg-white shadow-sm overflow-hidden">
+            <div className="border border-slate-200 rounded-xl p-8 mb-8 bg-white shadow-sm overflow-hidden" id="ticket-print">
               {/* Header du ticket */}
               <div className="text-center mb-6 pb-4 border-b-2 border-slate-800">
-                <div className="text-2xl font-bold mb-2 uppercase tracking-tighter">O'CLIC SANTE</div>
-                <div className="text-sm text-slate-600 font-medium">Plateforme de Gestion Médicale</div>
-                <div className="text-xs text-slate-400 mt-2">Secteur G, Conakry - Guinée</div>
+                <div className="text-2xl font-bold mb-2 uppercase tracking-tighter">{currentCenter.name}</div>
               </div>
 
               {/* Informations du ticket */}
-              <div className="grid grid-cols-2 gap-6 mb-8 text-sm">
-                <div className="p-4 bg-slate-50 rounded-xl">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">N° Ticket</div>
-                  <div className="font-black text-slate-900 text-lg tracking-tight">{printTicket.ticketNumber}</div>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-xl">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Date & Heure</div>
-                  <div className="font-bold text-slate-900">{format(new Date(printTicket.createdAt), 'dd/MM/yyyy HH:mm')}</div>
-                </div>
+              <div className="space-y-4 mb-8 text-sm">
                 <div className="p-4 bg-slate-50 rounded-xl">
                   <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Patient</div>
-                  <div className="font-bold text-slate-900">{printTicket.patientName}</div>
-                  <div className="text-[10px] text-slate-500">{printTicket.patientAge} ans • {printTicket.patientGender}</div>
-                </div>
-                <div className="p-4 bg-teal-50 rounded-xl">
-                  <div className="text-[10px] uppercase font-bold text-teal-600 mb-1">Total à payer</div>
-                  <div className="font-black text-teal-700 text-xl tracking-tighter">{printTicket.amount.toLocaleString()} GNF</div>
+                  <div className="font-bold text-slate-900 text-lg">{printTicket.patientName}</div>
                 </div>
               </div>
 
               {/* Services */}
               <div className="mb-8 p-4 border border-slate-100 rounded-xl">
-                <div className="text-[10px] uppercase font-bold text-slate-400 mb-4 tracking-widest">Prestations</div>
+                <div className="text-[10px] uppercase font-bold text-slate-400 mb-4 tracking-widest">Services Facturés</div>
                 {printTicket.services?.map((service, index) => (
-                  <div key={index} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50 px-2 rounded-lg transition-colors">
-                    <div>
-                      <div className="font-bold text-slate-800">{service.name}</div>
-                      <div className="text-[10px] text-slate-400 italic">Prestation de santé</div>
-                    </div>
-                    <div className="font-black text-slate-900">{service.price.toLocaleString()} GNF</div>
+                  <div key={index} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                    <div className="font-bold text-slate-800">{service.name}</div>
+                    <div className="font-black text-slate-900">{service.price.toLocaleString()} F</div>
                   </div>
                 ))}
               </div>
 
-              {/* Méthode de paiement */}
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl mb-8">
-                <div className="text-xs font-bold text-slate-600">Méthode de Paiement</div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{printTicket.paymentMethod === 'CASH' ? '💵' : '📱'}</span>
-                  <span className="font-black text-slate-900 uppercase tracking-tighter">{printTicket.paymentMethod === 'CASH' ? 'Espèces' : 'Paiement Mobile'}</span>
+              {/* Totaux */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-xl">
+                  <div className="text-xs font-bold text-slate-600 uppercase">Montant Total</div>
+                  <div className="font-black text-slate-900 text-xl">{(printTicket.amount || 0).toLocaleString()} F</div>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-teal-50 rounded-xl">
+                  <div className="text-xs font-bold text-teal-600 uppercase">Montant Payé</div>
+                  <div className="font-black text-teal-700 text-2xl">{(printTicket.amount || 0).toLocaleString()} F</div>
                 </div>
               </div>
 
-              <div className="text-center p-4 border-t border-slate-100 mt-4 text-[10px] text-slate-400 uppercase font-black tracking-[0.2em]">
-                Merci de votre confiance • Document Officiel O'CLIC SANTE
+              <div className="text-center p-4 border-t border-slate-100 mt-6 text-[10px] text-slate-400 uppercase font-black tracking-widest">
+                Merci de votre confiance
               </div>
             </div>
 
