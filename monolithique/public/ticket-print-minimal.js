@@ -1,9 +1,12 @@
 /**
- * Impression ticket minimal — une seule source pour tous les flux d'impression.
- * Champs : clinique, date, patient, services, total à payer, total payé.
+ * Impression ticket minimal — ULTRA-AGRESSIF
+ * Force le format court même si l'application tente d'utiliser ses propres modèles.
  */
 (function () {
     'use strict';
+
+    const DEBUG = true;
+    function log(msg) { if (DEBUG) console.log('[TICKET-FORCE] ' + msg); }
 
     function esc(s) {
         return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -17,37 +20,12 @@
                 if (c && (c.name || c.centerName)) return c;
             }
         } catch (e) { /* ignore */ }
-        return window.medicalCenterConfig || { name: "O'CLIC SANTE" };
+        return window.medicalCenterConfig || { name: "CLINIQUE SARR" };
     }
 
     function formatAmount(val) {
         const num = parseFloat(String(val).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
         return num.toLocaleString('fr-FR') + ' F';
-    }
-
-    function formatDateInput(value) {
-        if (!value) return '';
-        const d = value instanceof Date ? value : new Date(value);
-        if (isNaN(d.getTime())) return '';
-        return d.toLocaleString('fr-FR', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-    }
-
-    function buildServicesFromTicket(ticket) {
-        const list = [];
-        if (Array.isArray(ticket.services) && ticket.services.length > 0) {
-            ticket.services.forEach((s) => {
-                list.push({
-                    name: s.name || s.serviceName || 'Service',
-                    price: formatAmount(s.price || s.amount || 0)
-                });
-            });
-        } else if (ticket.serviceName) {
-            list.push({ name: ticket.serviceName, price: formatAmount(ticket.amount || 0) });
-        }
-        return list;
     }
 
     function buildTicketHtml(data) {
@@ -59,7 +37,6 @@
                 </div>`).join('')
             : '<div class="svc-row muted"><span class="svc-name">—</span></div>';
 
-        // Nettoyage radical : ne garder que le nom (tout avant la première virgule, point, ou retour ligne)
         let cleanCenter = esc(data.centerName).split(/[\n\r,.]/)[0].replace(/Avenue.*|Tel:.*|@.*/gi, '').trim();
         if (!cleanCenter || cleanCenter.length < 3) cleanCenter = "CLINIQUE SARR";
         
@@ -69,9 +46,8 @@
 <html><head><meta charset="UTF-8"><title>Ticket</title>
 <style>
   @page { size: 80mm auto; margin: 0; }
-  html, body { margin: 0; padding: 0; height: auto; overflow: visible; }
+  html, body { margin: 0; padding: 0; height: auto; overflow: visible; background: #fff; }
   body { font-family: 'Courier New', Courier, monospace; color: #000; width: 72mm; padding: 5mm; box-sizing: border-box; }
-  * { page-break-before: avoid !important; page-break-after: avoid !important; page-break-inside: avoid !important; }
   .hdr { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
   .hdr h1 { font-size: 20px; font-weight: 900; margin: 0; text-transform: uppercase; }
   .blk { margin-bottom: 12px; border-bottom: 1px dashed #000; padding-bottom: 8px; }
@@ -84,6 +60,7 @@
   .total-row.main { border-top: 2px solid #000; padding-top: 10px; margin-top: 10px; font-size: 18px; }
   .total-amt { font-size: 20px; font-weight: 900; }
   .footer { text-align: center; margin-top: 25px; font-size: 12px; font-weight: 900; border-top: 1px solid #000; padding-top: 10px; }
+  @media print { body { width: 100%; } }
 </style></head><body>
   <div class="hdr"><h1>${cleanCenter}</h1></div>
   <div class="blk"><div class="lbl">Patient</div><div class="val">${cleanPatient}</div></div>
@@ -92,37 +69,6 @@
   <div class="total-row main"><span>MONTANT PAYÉ</span><span class="total-amt">${esc(data.totalPaid)}</span></div>
   <div class="footer">MERCI DE VOTRE CONFIANCE</div>
 </body></html>`;
-    }
-
-    function openPrintWindow(html) {
-        const printWin = window.open('', '_blank', 'width=420,height=640');
-        if (!printWin) {
-            alert('Veuillez autoriser les fenêtres popup pour imprimer le ticket.');
-            return false;
-        }
-        printWin.document.open();
-        printWin.document.write(html);
-        printWin.document.close();
-        printWin.focus();
-        setTimeout(() => {
-            printWin.print();
-            setTimeout(() => printWin.close(), 600);
-        }, 300);
-        return true;
-    }
-
-    function ticketFromObject(ticket) {
-        const center = getCenter();
-        const amount = ticket.amount || ticket.totalAmount || ticket.total || 0;
-        const total = formatAmount(amount);
-        return {
-            centerName: center.name || center.centerName || "O'CLIC SANTE",
-            dateStr: formatDateInput(ticket.createdAt || ticket.date) || formatDateInput(new Date()),
-            patientName: ticket.patientName || ticket.patient?.name || 'Anonyme',
-            services: buildServicesFromTicket(ticket),
-            totalDue: total,
-            totalPaid: total
-        };
     }
 
     function extractFromPrintArea(area) {
@@ -134,29 +80,15 @@
         };
 
         const center = getCenter();
-        const centerName = center.name || center.centerName ||
-            area.querySelector('.font-black.text-xl')?.innerText?.trim() ||
-            area.querySelector('.font-bold.text-lg')?.innerText?.trim() || "O'CLIC SANTE";
-
-        let dateStr = fullText.match(/(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2})/)?.[1] || '';
-        if (!dateStr) {
-            const dateLine = Array.from(area.querySelectorAll('span, div'))
-                .map((el) => el.innerText.trim())
-                .find((t) => /^DATE\s*:/i.test(t));
-            if (dateLine) dateStr = dateLine.replace(/^DATE\s*:\s*/i, '').trim();
-        }
-        if (!dateStr) dateStr = formatDateInput(new Date());
+        let centerName = center.name || center.centerName || "CLINIQUE SARR";
 
         let patientName = 'Anonyme';
-        const patientLabels = area.querySelectorAll('span, div, b');
-        for (let el of patientLabels) {
+        const labels = area.querySelectorAll('span, div, b, td, p');
+        for (let el of labels) {
             const txt = el.innerText.trim();
             if (/^PATIENT\s*:?\s*$/i.test(txt)) {
                 const next = el.nextElementSibling || el.parentElement.nextElementSibling;
-                if (next) {
-                    patientName = next.innerText.trim();
-                    break;
-                }
+                if (next) { patientName = next.innerText.trim(); break; }
             }
             if (/^PATIENT\s*:\s*(.+)/i.test(txt)) {
                 patientName = txt.match(/^PATIENT\s*:\s*(.+)/i)[1].trim();
@@ -165,34 +97,28 @@
         }
         
         if (patientName === 'Anonyme') {
-            const alt = area.querySelector('.text-lg.font-black') ||
-                area.querySelector('.font-bold.text-black:not(.uppercase)');
-            if (alt) patientName = alt.innerText.trim().split('\n')[0];
+            const matches = fullText.match(/PATIENT\s*:\s*([^\n\r]+)/i);
+            if (matches) patientName = matches[1].trim();
         }
 
-        const skipRow = (txt) => /TOTAL|PAIEMENT|PATIENT|SIGNATURE|SOUS-TOTAL|MÉDECIN|ASSURANCE|NET À|DATE\s*:|TEL|RNIS|NUMÉRO|REF\s*:|MODE DE|Merci|Conservez|Propulsé|Cachet|RECU|REÇU|Quantum|EMAIL|@|PRESTATIONS|RECU DE PAIEMENT/i.test(txt);
+        const skipRow = (txt) => /TOTAL|PAIEMENT|PATIENT|SIGNATURE|SOUS-TOTAL|MÉDECIN|ASSURANCE|NET À|DATE\s*:|TEL|RNIS|NUMÉRO|REF\s*:|MODE DE|Merci|Conservez|Propulsé|Cachet|RECU|REÇU|Quantum|EMAIL|@|PRESTATIONS|RECU DE PAIEMENT|DÉTAIL/i.test(txt);
 
         const services = [];
-        area.querySelectorAll('div[class*="justify-between"], div.flex.justify-between, tr, .svc-row').forEach((row) => {
+        area.querySelectorAll('div[class*="justify-between"], div.flex.justify-between, tr, .svc-row, div.grid').forEach((row) => {
             const rowText = row.innerText || '';
             if (skipRow(rowText)) return;
-            
-            // Try different extraction strategies
             let name = '', price = '';
-            
-            const spans = row.querySelectorAll('span, td');
+            const spans = row.querySelectorAll('span, td, div');
             if (spans.length >= 2) {
                 name = spans[0].innerText.trim();
                 price = sanitizeAmount(spans[spans.length - 1].innerText);
             } else {
-                // Try split by space/tab
                 const parts = rowText.trim().split(/\s{2,}|\t/);
                 if (parts.length >= 2) {
                     name = parts[0];
                     price = sanitizeAmount(parts[parts.length - 1]);
                 }
             }
-
             if (name && name.length > 2 && !skipRow(name)) {
                 services.push({ name, price });
             }
@@ -204,117 +130,97 @@
         const paidMatch = fullText.match(/(?:PAYÉ|VERSEMENT|PAIEMENT)\s*:?\s*([\d\s.,]+)/i);
         if (dueMatch) totalDue = sanitizeAmount(dueMatch[1]);
         if (paidMatch) totalPaid = sanitizeAmount(paidMatch[1]);
-        if (!totalDue && !totalPaid) {
-            const t = fullText.match(/TOTAL\s+([\d\s.,]+)\s*F/i);
+        if (!totalDue) {
+            const t = fullText.match(/(\d[\d\s.,]*)\s*F/i);
             if (t) totalDue = totalPaid = sanitizeAmount(t[1]);
         }
         if (!totalDue) totalDue = totalPaid || '0 F';
         if (!totalPaid) totalPaid = totalDue;
 
-        return { centerName, dateStr, patientName, services, totalDue, totalPaid };
+        return { centerName, patientName, services, totalDue, totalPaid };
     }
 
-    /** Impression depuis objet ticket (API / professional-receipt / etc.) */
-    window.oclicPrintMinimalTicket = function (ticket) {
-        const html = buildTicketHtml(ticketFromObject(ticket || {}));
-        openPrintWindow(html);
-    };
+    function openPrintWindow(html) {
+        log('Opening print window...');
+        const printWin = window.open('', '_blank', 'width=420,height=640');
+        if (!printWin) return false;
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+        setTimeout(() => {
+            printWin.focus();
+            printWin.print();
+            setTimeout(() => printWin.close(), 1000);
+        }, 500);
+        return true;
+    }
 
-    function installPrintOverride() {
-        if (!window.__oclicNativePrint) {
-            window.__oclicNativePrint = window.print.bind(window);
-        }
-        const originalPrint = window.__oclicNativePrint;
+    function installOverrides() {
+        if (window.__oclicOverriden) return;
+        window.__oclicOverriden = true;
 
-        window.print = function oclicMinimalPrint() {
-            const printAreas = document.querySelectorAll(
-                '#print-area, #receipt-print-area, .print-area, .ticket-print, #ticket-print'
-            );
-            if (printAreas.length === 0) {
-                originalPrint();
-                return;
-            }
+        log('Installing overrides...');
 
-            let area = null;
-            for (const a of printAreas) {
-                const r = a.getBoundingClientRect();
-                if (r.width > 0 && r.height > 0 && a.innerText.trim().length > 10) {
-                    area = a;
-                    break;
+        // Override window.print
+        const nativePrint = window.print.bind(window);
+        window.print = function() {
+            log('Intercepted window.print()');
+            const body = document.body;
+            if (body.innerText.includes('DETAIL DES PRESTATIONS') || body.innerText.includes('R E C U')) {
+                const html = buildTicketHtml(extractFromPrintArea(body));
+                openPrintWindow(html);
+            } else {
+                const area = document.querySelector('#print-area, #receipt-print-area, .print-area, #ticket-print');
+                if (area) {
+                    const html = buildTicketHtml(extractFromPrintArea(area));
+                    openPrintWindow(html);
+                } else {
+                    nativePrint();
                 }
-            }
-            if (!area) {
-                originalPrint();
-                return;
-            }
-
-            const html = buildTicketHtml(extractFromPrintArea(area));
-            if (!openPrintWindow(html)) {
-                document.body.classList.add('oclic-ticket-printing');
-                const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/i);
-                area.innerHTML = bodyMatch ? bodyMatch[1] : '';
-                originalPrint();
-                document.body.classList.remove('oclic-ticket-printing');
             }
         };
 
-        // Proxy window.open to catch new windows
-        if (!window.__oclicNativeOpen) {
-            window.__oclicNativeOpen = window.open;
-            window.open = function() {
-                const win = window.__oclicNativeOpen.apply(this, arguments);
-                if (win) {
-                    // Force minimal print on the new window
-                    const checkInterval = setInterval(() => {
-                        try {
-                            if (win.document && win.document.body) {
-                                // If win.print is called, we catch it
-                                if (!win.__oclicPrintPatched) {
-                                    const winPrint = win.print;
-                                    win.print = function() {
-                                        const body = win.document.body;
-                                        if (body && (body.innerText.includes('TICKET') || body.innerText.includes('RECU') || body.innerText.includes('Facture'))) {
-                                            const minimalHtml = buildTicketHtml(extractFromPrintArea(body));
-                                            win.document.open();
-                                            win.document.write(minimalHtml);
-                                            win.document.close();
-                                        }
-                                        return winPrint.apply(win, arguments);
-                                    };
-                                    win.__oclicPrintPatched = true;
-                                }
-                                // Optional: auto-transform content even before print is called
-                                if (win.document.body.innerText.length > 50 && !win.__oclicContentTransformed) {
-                                     // wait a bit for React to render
-                                }
+        // Override window.open
+        const nativeOpen = window.open.bind(window);
+        window.open = function() {
+            const win = nativeOpen.apply(this, arguments);
+            if (win) {
+                log('Intercepted window.open()');
+                const itv = setInterval(() => {
+                    try {
+                        if (win.document && win.document.body && win.document.body.innerText.length > 20) {
+                            const txt = win.document.body.innerText;
+                            if (txt.includes('DETAIL DES PRESTATIONS') || txt.includes('R E C U')) {
+                                log('Found ticket in popup, transforming...');
+                                const minimalHtml = buildTicketHtml(extractFromPrintArea(win.document.body));
+                                win.document.open();
+                                win.document.write(minimalHtml);
+                                win.document.close();
+                                clearInterval(itv);
                             }
-                        } catch(e) { /* cross-origin possible */ }
-                    }, 500);
-                    setTimeout(() => clearInterval(checkInterval), 5000);
-                }
-                return win;
-            };
-        }
+                        }
+                    } catch(e) { clearInterval(itv); }
+                }, 100);
+                setTimeout(() => clearInterval(itv), 5000);
+            }
+            return win;
+        };
+
+        // Add CSS to hide unwanted stuff during print on the main window just in case
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @media print {
+                body.oclic-minimal-printing > *:not(.oclic-force-visible) { display: none !important; }
+                .no-print { display: none !important; }
+            }
+        `;
+        document.head.appendChild(style);
     }
 
-    function installGlobalAliases() {
-        window.printProfessionalReceipt = window.oclicPrintMinimalTicket;
-        window.printTicketReceipt = window.oclicPrintMinimalTicket;
-        window.printCompactTicket = window.oclicPrintMinimalTicket;
-        window.printSinglePageTicket = window.oclicPrintMinimalTicket;
-        window.printMiniTicket = window.oclicPrintMinimalTicket;
-    }
+    // Run immediately and frequently
+    installOverrides();
+    window.addEventListener('load', installOverrides);
+    setInterval(installOverrides, 2000);
 
-    installGlobalAliases();
-    installPrintOverride();
-    window.addEventListener('load', () => {
-        installGlobalAliases();
-        installPrintOverride();
-    });
-    setInterval(() => {
-        installGlobalAliases();
-        installPrintOverride();
-    }, 3000);
-
-    console.log('TICKET-PRINT-MINIMAL: actif (format court)');
+    log('Loaded & Active');
 })();
