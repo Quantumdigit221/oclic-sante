@@ -49,53 +49,186 @@
 
     // --- REVENUE & DASHBOARD FIXER ---
     const formatCurrency = (val) => Number(val || 0).toLocaleString('fr-FR') + ' FCFA';
-    
-    function fixDashboard() {
-        // Ciblages multiples pour être sûr de trouver le bon widget
-        const elements = document.querySelectorAll('.rounded-xl, .bg-white, span, div, p, h3, h4');
-        
-        // 1. On cherche d'abord les erreurs de format (doublons)
-        const badRevenuePattern = /\d+\.00\d{3,}/; 
-        elements.forEach(el => {
-            if (el.innerText.includes('02000.002000') || (el.children.length === 0 && badRevenuePattern.test(el.innerText))) {
-                if (el.dataset.fixing) return;
-                el.dataset.fixing = "true";
-                fetch('/api/stats').then(r => r.json()).then(data => {
-                    const val = data.total_revenue_today || data.dailyRevenue?.value || 0;
-                    el.innerText = formatCurrency(val);
-                    el.style.color = '#059669';
-                    el.style.fontWeight = 'bold';
-                    delete el.dataset.fixing;
-                }).catch(() => { delete el.dataset.fixing; });
+    const formatNumber = (val) => Number(val || 0).toLocaleString('fr-FR');
+
+    const DASHBOARD_KPI = [
+        {
+            labels: ["patients aujourd'hui", 'patients du jour'],
+            pick: (d) => d.dailyPatients?.value ?? d.total_patients_today ?? 0,
+            format: formatNumber
+        },
+        {
+            labels: ['revenus du jour', 'ca du jour'],
+            pick: (d) => d.dailyRevenue?.value ?? d.total_revenue_today ?? 0,
+            format: formatCurrency
+        },
+        {
+            labels: ["en salle d'attente", 'salle d attente'],
+            pick: (d) => d.waitingRoom?.value ?? d.waiting_today ?? 0,
+            format: formatNumber
+        },
+        {
+            labels: ['stock critique', 'stock alerte'],
+            pick: (d) => d.criticalStock?.value ?? d.stock_alert ?? 0,
+            format: formatNumber
+        }
+    ];
+
+    function normalizeLabel(text) {
+        return (text || '')
+            .trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function isDashboardRoute() {
+        const hash = window.location.hash || '#/';
+        return hash === '#/' || hash === '#' || hash.endsWith('/');
+    }
+
+    let dashboardStatsCache = null;
+    let dashboardFetchInFlight = null;
+
+    function fetchDashboardStats(force) {
+        if (!force && dashboardStatsCache) return Promise.resolve(dashboardStatsCache);
+        if (dashboardFetchInFlight) return dashboardFetchInFlight;
+        dashboardFetchInFlight = fetch('/api/stats?_=' + Date.now(), { cache: 'no-store' })
+            .then((r) => r.json())
+            .then((data) => {
+                dashboardStatsCache = data;
+                dashboardFetchInFlight = null;
+                return data;
+            })
+            .catch((err) => {
+                dashboardFetchInFlight = null;
+                console.warn('DASHBOARD-FIXER: stats fetch failed', err);
+                return dashboardStatsCache || {};
+            });
+        return dashboardFetchInFlight;
+    }
+
+    function findKpiValueElement(card) {
+        const candidates = Array.from(card.querySelectorAll('p, div, span, h3, h4'))
+            .filter((el) => el.children.length === 0);
+        return candidates.find((el) => {
+            const t = el.innerText.trim();
+            return t.includes('FCFA') || /^\d[\d\s.,]*$/.test(t);
+        }) || candidates[candidates.length - 1];
+    }
+
+    function applyDashboardStats(data) {
+        if (!data) return;
+        const titles = document.querySelectorAll('p, span, h3, h4, div');
+        titles.forEach((titleEl) => {
+            const label = normalizeLabel(titleEl.innerText);
+            const kpi = DASHBOARD_KPI.find((k) => k.labels.some((l) => label === l));
+            if (!kpi) return;
+            const card = titleEl.closest('.rounded-xl, .bg-white, .p-4, .p-6, .shadow-sm');
+            if (!card) return;
+            const valueEl = findKpiValueElement(card);
+            if (!valueEl) return;
+            const next = kpi.format(kpi.pick(data));
+            if (valueEl.innerText.trim() !== next) {
+                valueEl.innerText = next;
+                valueEl.dataset.oclicSynced = 'true';
+            }
+            if (kpi.format === formatCurrency) {
+                valueEl.style.color = '#059669';
+                valueEl.style.fontWeight = '800';
             }
         });
 
-        // 2. On cherche le bloc "Revenus du jour" pour s'assurer qu'il n'est pas à 0 à tort
-        elements.forEach(el => {
-            const txt = el.innerText.trim();
-            if (txt === "Revenus du jour" || txt === "CA du jour") {
-                const card = el.closest('.rounded-xl, .bg-white, .p-4, .p-6');
-                if (card) {
-                    // On cherche le montant dans cette carte
-                    const amountEl = Array.from(card.querySelectorAll('p, div, h3'))
-                        .find(sub => sub.innerText.includes('FCFA') || sub.innerText.match(/^\s*\d+[\s\d]*\s*$/));
-                    
-                    if (amountEl && (amountEl.innerText.startsWith('0') || amountEl.innerText === '0 FCFA')) {
-                        if (amountEl.dataset.fixing) return;
-                        amountEl.dataset.fixing = "true";
-                        fetch('/api/stats').then(r => r.json()).then(data => {
-                            const val = data.total_revenue_today || data.dailyRevenue?.value || 0;
-                            if (parseFloat(val) > 0) {
-                                amountEl.innerText = formatCurrency(val);
-                                amountEl.style.color = '#059669';
-                                amountEl.style.fontWeight = '800';
-                            }
-                            delete amountEl.dataset.fixing;
-                        }).catch(() => { delete amountEl.dataset.fixing; });
-                    }
-                }
+        const badRevenuePattern = /\d+\.00\d{3,}/;
+        document.querySelectorAll('p, div, span').forEach((el) => {
+            if (el.children.length === 0 && (el.innerText.includes('02000.002000') || badRevenuePattern.test(el.innerText))) {
+                el.innerText = formatCurrency(data.dailyRevenue?.value ?? data.total_revenue_today ?? 0);
             }
         });
+    }
+
+    function fixDashboard(force) {
+        if (!isDashboardRoute()) return;
+        fetchDashboardStats(force).then(applyDashboardStats);
+    }
+
+    function invalidateDashboardStats() {
+        dashboardStatsCache = null;
+        fixDashboard(true);
+    }
+
+    async function cancelSaleById(saleId) {
+        const res = await fetch('/api/sales/' + encodeURIComponent(saleId) + '/cancel', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Annulation impossible');
+        }
+        return res.json();
+    }
+
+    function setupSaleCancelUi() {
+        const injectButtons = () => {
+            document.querySelectorAll('table tbody tr').forEach((row) => {
+                if (row.querySelector('[data-oclic-cancel-sale]')) return;
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 8) return;
+                const typeText = (cells[3]?.innerText || '').trim().toUpperCase();
+                if (typeText !== 'VENTE') return;
+                const saleId = (cells[8]?.innerText || '').trim();
+                if (!saleId || saleId === '-') return;
+                const actionCell = cells[cells.length - 1];
+                if (!actionCell) return;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.dataset.oclicCancelSale = saleId;
+                btn.className = 'ml-2 text-xs font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded';
+                btn.textContent = 'Annuler vente';
+                btn.onclick = async (ev) => {
+                    ev.stopPropagation();
+                    if (!window.confirm('Annuler cette vente ? Le revenu du tableau de bord sera mis à jour.')) return;
+                    btn.disabled = true;
+                    try {
+                        await cancelSaleById(saleId);
+                        invalidateDashboardStats();
+                        window.dispatchEvent(new CustomEvent('oclic:sale-cancelled', { detail: { saleId } }));
+                        if (window.location.hash.includes('pharmacy')) {
+                            window.location.reload();
+                        } else {
+                            row.remove();
+                        }
+                    } catch (e) {
+                        alert(e.message || 'Erreur lors de l\'annulation');
+                        btn.disabled = false;
+                    }
+                };
+                actionCell.appendChild(btn);
+            });
+        };
+
+        const observer = new MutationObserver(() => injectButtons());
+        observer.observe(document.body, { childList: true, subtree: true });
+        injectButtons();
+    }
+
+    function setupDashboardFetchHook() {
+        const nativeFetch = window.fetch;
+        window.fetch = async function patchedFetch(url, options) {
+            const response = await nativeFetch.apply(this, arguments);
+            try {
+                const urlStr = typeof url === 'string' ? url : (url?.url || '');
+                const method = (options?.method || 'GET').toUpperCase();
+                if (response.ok && urlStr.includes('/api/sales') && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+                    invalidateDashboardStats();
+                    window.dispatchEvent(new CustomEvent('oclic:data-changed', { detail: { url: urlStr, method } }));
+                }
+            } catch (e) {
+                console.warn('DASHBOARD-FIXER: fetch hook', e);
+            }
+            return response;
+        };
     }
 
     // --- PRINTING HIJACKER ---
@@ -240,11 +373,6 @@
                         }).join('') : '<tr><td colspan="3" style="text-align:center; padding: 50px;">Aucun élément</td></tr>'}
                     </tbody>
                 </table>
-                <div class="footer">
-                    <div class="signature-area">
-                        <div class="sig-line">Dr. ${cons.doctorName || ''}</div>
-                    </div>
-                </div>
             </body>
             </html>
         `;
@@ -253,162 +381,214 @@
     // --- TICKET REPAIR PROTECTOR (Fixes the "0 FCFA" and double FCFA on Receipts) ---
     function setupTicketFixer() {
         const originalPrint = window.print;
-        window.print = function() {
-            console.log('TICKET-FIXER: Global intercept active.');
-            
-            // On cherche n'importe quel élément qui ressemble à une zone d'impression
-            const printAreas = document.querySelectorAll('#print-area, .print-area, .ticket-print, #ticket-print');
-            
-            printAreas.forEach(area => {
-                console.log('TICKET-FIXER: Reconstructing ticket design...');
-                
-                const sanitizeAmount = (txt) => {
-                    if (!txt) return '0 F CFA';
-                    // On retire le texte monétaire et les espaces insécables
-                    const val = txt.replace(/F\s*CFA|FCFA/gi, '').replace(/[\s\u00A0]/g, '').trim();
-                    const num = parseFloat(val) || 0;
-                    return num.toLocaleString('fr-FR') + ' F CFA';
-                };
 
-                const centerName = area.querySelector('.font-bold.text-lg')?.innerText || 'O\'CLIC SANTE';
-                const centerDetails = Array.from(area.querySelectorAll('.text-xs.text-black')).map(el => el.innerText);
-                const ticketNumFull = area.querySelector('.text-2xl.font-black')?.innerText || '----';
-                const ticketID = area.querySelectorAll('.text-\\[10px\\]')[0]?.innerText || '';
-                const dateStr = area.querySelector('.text-xs.mt-1')?.innerText || new Date().toLocaleString();
-                
-                const patientName = area.querySelector('.font-bold.text-black:not(.uppercase)')?.innerText || 'Anonyme';
-                const patientMeta = area.querySelector('.text-xs.text-black:nth-of-type(2)')?.innerText || '';
-                const patientPhone = area.querySelector('.text-xs.text-black:nth-of-type(3)')?.innerText || '';
-                
-                // Extraction et nettoyage du TOTAL
-                let rawTotal = area.querySelector('.text-lg.font-bold span:last-child')?.innerText || '0 F CFA';
-                const totalAmount = sanitizeAmount(rawTotal);
-                
-                const paymentMethod = area.querySelector('div[class*="mt-1"]')?.innerText || 'Espèces';
-
-                // Reconstruction des services
-                let servicesHTML = '';
-                const rawRows = Array.from(area.querySelectorAll('div[class*="justify-between"]'))
-                    .filter(el => {
-                        const txt = el.innerText.toUpperCase();
-                        return !txt.includes('TOTAL') && !txt.includes('PAIEMENT') && !txt.includes('PATIENT') && !txt.includes('SIGNATURE');
-                    });
-
-                let allServices = [];
-                if (rawRows.length > 0) {
-                    rawRows.forEach(row => {
-                        const spans = row.querySelectorAll('span');
-                        if (spans.length >= 2) {
-                            const name = spans[0].innerText.trim();
-                            const price = sanitizeAmount(spans[1].innerText.trim());
-                            if (name && !name.includes('TOTAL')) {
-                                if (name.includes(' + ')) {
-                                    name.split(' + ').forEach(n => allServices.push({ name: n.trim(), price: '' }));
-                                } else {
-                                    allServices.push({ name, price });
-                                }
-                            }
-                        }
-                    });
+        function getClinicName(fallbackFromDom) {
+            try {
+                const raw = localStorage.getItem('currentCenter');
+                if (raw) {
+                    const center = JSON.parse(raw);
+                    if (center && (center.name || center.centerName)) {
+                        return center.name || center.centerName;
+                    }
                 }
-                
-                // Si on a un total à 0 mais qu'on a trouvé un chiffre ailleurs, on essaie de le récupérer
-                const finalTotal = totalAmount === '0 F CFA' ? sanitizeAmount(rawTotal) : totalAmount;
+            } catch (e) { /* ignore */ }
+            return fallbackFromDom || "O'CLIC SANTE";
+        }
 
-                // Construction finale des lignes de services
-                if (allServices.length > 0) {
-                    allServices.forEach(s => {
-                        // S'assurer qu'un service n'affiche 0 que si c'est vraiment gratuit
-                        let sPrice = s.price;
-                        if (sPrice === '0 F CFA' && finalTotal !== '0 F CFA' && allServices.length === 1) {
-                            sPrice = finalTotal;
-                        }
-                        
-                        servicesHTML += `
-                            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px; border-bottom:1px dotted #eee; padding-bottom:3px;">
-                                <span style="flex:1; padding-right:8px;">${s.name}</span>
-                                <span style="font-weight:bold; white-space:nowrap;">${sPrice}</span>
-                            </div>`;
-                    });
+        function extractTicketFromArea(area) {
+            const fullText = area.innerText || '';
+
+            const sanitizeAmount = (txt) => {
+                if (!txt) return '0 F';
+                const val = String(txt).replace(/F\s*CFA|FCFA|F\b/gi, '').replace(/[\s\u00A0]/g, '').replace(/,/g, '').trim();
+                const num = parseFloat(val) || 0;
+                return num.toLocaleString('fr-FR') + ' F';
+            };
+
+            const domCenterName =
+                area.querySelector('.font-black.text-xl')?.innerText?.trim() ||
+                area.querySelector('.font-bold.text-lg')?.innerText?.trim() ||
+                area.querySelector('.font-bold.text-sm.uppercase')?.innerText?.trim();
+            const centerName = getClinicName(domCenterName);
+
+            let dateStr = '';
+            const dateRegex = fullText.match(/(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2})/);
+            if (dateRegex) {
+                dateStr = dateRegex[1];
+            } else {
+                const dateLine = Array.from(area.querySelectorAll('span, div'))
+                    .map(el => el.innerText.trim())
+                    .find(t => /^DATE\s*:/i.test(t));
+                if (dateLine) {
+                    dateStr = dateLine.replace(/^DATE\s*:\s*/i, '').trim();
                 }
+            }
+            if (!dateStr) {
+                dateStr = new Date().toLocaleString('fr-FR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            }
 
-                // NOUVEAU DESIGN PREMIUM
-                area.innerHTML = `
-                    <div style="font-family:'Courier New', Courier, monospace; color:black; width:100%; word-wrap:break-word;">
-                        <!-- HEADER -->
-                        <div style="text-center; border-bottom:2px solid black; padding-bottom:10px; margin-bottom:10px; text-align:center;">
-                            <div style="font-size:18px; font-weight:900; letter-spacing:1px; margin-bottom:2px;">${centerName}</div>
-                            <div style="font-size:10px; line-height:1.2;">
-                                ${centerDetails.join('<br>')}
-                            </div>
-                        </div>
+            let patientName = 'Anonyme';
+            const patientHeader = Array.from(area.querySelectorAll('*'))
+                .find(el => /^PATIENT\s*:?$/i.test((el.innerText || '').trim()));
+            if (patientHeader) {
+                const block = patientHeader.closest('div')?.parentElement || patientHeader.parentElement;
+                const nameEl = block?.querySelector('.font-bold, .font-black');
+                if (nameEl) {
+                    const candidate = nameEl.innerText.trim().split('\n')[0];
+                    if (candidate && !/^PATIENT$/i.test(candidate)) patientName = candidate;
+                }
+            }
+            if (patientName === 'Anonyme') {
+                const alt = area.querySelector('.text-lg.font-black') ||
+                    area.querySelector('.font-bold.text-black:not(.uppercase)');
+                if (alt) patientName = alt.innerText.trim().split('\n')[0];
+            }
 
-                        <!-- TICKET MAIN INFO -->
-                        <div style="text-align:center; margin-bottom:15px; border-bottom:1px dashed black; padding-bottom:10px;">
-                            <div style="font-size:10px; text-transform:uppercase; letter-spacing:2px; margin-bottom:5px;">RECU DE PAIEMENT</div>
-                            <div style="font-size:32px; font-weight:900; margin:5px 0;">#${ticketNumFull}</div>
-                            <div style="font-size:9px; color:#333;">Ref: ${ticketID}</div>
-                            <div style="font-size:10px; margin-top:5px; font-weight:bold;">${dateStr}</div>
-                        </div>
+            const skipRow = (txt) => /TOTAL|PAIEMENT|PATIENT|SIGNATURE|SOUS-TOTAL|MÉDECIN|ASSURANCE|NET À|DATE\s*:|TEL|RNIS|NUMÉRO|REF\s*:|MODE DE|Merci|Conservez|Propulsé|Cachet|Bon rétablissement/i.test(txt);
 
-                        <!-- PATIENT SECTION -->
-                        <div style="margin-bottom:15px; border-bottom:1px dashed black; padding-bottom:10px;">
-                            <div style="font-size:9px; font-weight:bold; text-decoration:underline; margin-bottom:4px;">PATIENT :</div>
-                            <div style="font-size:13px; font-weight:bold;">${patientName}</div>
-                            <div style="font-size:10px;">${patientMeta}</div>
-                            <div style="font-size:10px;">${patientPhone}</div>
-                        </div>
-
-                        <!-- SERVICES SECTION -->
-                        <div style="margin-bottom:15px;">
-                            <div style="font-size:9px; font-weight:bold; text-decoration:underline; margin-bottom:8px;">DETAIL DES PRESTATIONS :</div>
-                            <div style="min-height:40px;">
-                                ${servicesHTML}
-                            </div>
-                        </div>
-
-                        <!-- TOTAL SECTION -->
-                        <div style="border-top:2px solid black; border-bottom:2px solid black; padding:8px 0; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:12px; font-weight:bold;">TOTAL A PAYER</span>
-                            <span style="font-size:18px; font-weight:900;">${finalTotal}</span>
-                        </div>
-
-                        <!-- PAYMENT INFO -->
-                        <div style="font-size:10px; margin-bottom:20px; text-align:right; font-style:italic;">
-                            MODE DE PAIEMENT : ${paymentMethod.replace('Paiement: ', '')}
-                        </div>
-
-                        <!-- BARCODE SIMULATION -->
-                        <div style="text-align:center; margin-bottom:20px;">
-                            <div style="height:30px; width:100%; background:repeating-linear-gradient(90deg, black, black 1px, white 1px, white 3px, black 3px, black 4px, white 4px, white 5px);"></div>
-                            <div style="font-size:8px; margin-top:2px;">* ${ticketID} *</div>
-                        </div>
-
-                        <!-- FOOTER -->
-                        <div style="text-align:center; font-size:10px; line-height:1.4;">
-                            <div style="height:50px; border:1px solid #ccc; margin-bottom:10px; display:flex; align-items:center; justify-content:center; color:#666; font-style:italic; font-size:9px;">
-                                Signature & Cachet
-                            </div>
-                            <div style="font-weight:bold; font-size:11px;">Merci de votre confiance !</div>
-                            <div style="font-size:9px; margin-top:4px;">Conservez ce ticket pour tout suivi médical.</div>
-                            <div style="margin-top:10px; font-size:8px; color:#555;">O'CLIC SANTE - Propulsé par Quantum Digit</div>
-                        </div>
-                    </div>
-                `;
-
-                // Suppression des doublons monétaires potentiels dans le nouveau rendu
-                area.innerHTML = area.innerHTML.replace(/(F\s*CFA|FCFA)[\s\u00A0]+(FCFA|F\s*CFA)/gi, 'F CFA');
+            const services = [];
+            Array.from(area.querySelectorAll('div[class*="justify-between"], div.flex.justify-between')).forEach(row => {
+                const rowText = row.innerText || '';
+                if (skipRow(rowText)) return;
+                const spans = row.querySelectorAll('span');
+                if (spans.length >= 2) {
+                    const name = spans[0].innerText.trim();
+                    const price = sanitizeAmount(spans[spans.length - 1].innerText);
+                    if (name && name.length < 120 && !skipRow(name)) {
+                        services.push({ name, price });
+                    }
+                } else if (spans.length === 1) {
+                    const name = spans[0].innerText.trim();
+                    if (name && name.length < 120 && !skipRow(name)) {
+                        services.push({ name, price: '' });
+                    }
+                }
             });
-            
-            originalPrint.call(window);
+
+            let totalDue = '';
+            let totalPaid = '';
+            const dueMatch = fullText.match(/TOTAL\s*À\s*PAYER\s*:?\s*([\d\s.,]+)/i);
+            const paidMatch = fullText.match(/MONTANT\s*PAYÉ\s*:?\s*([\d\s.,]+)/i);
+            const netMatch = fullText.match(/NET\s*À\s*PAYER\s*(?:\(PATIENT\))?\s*:?\s*([\d\s.,]+)/i);
+            const simpleTotal = fullText.match(/(?:^|\n)\s*TOTAL\s+([\d\s.,]+)\s*F/i);
+
+            if (dueMatch) totalDue = sanitizeAmount(dueMatch[1]);
+            else if (netMatch) totalDue = sanitizeAmount(netMatch[1]);
+            else if (simpleTotal) totalDue = sanitizeAmount(simpleTotal[1]);
+
+            if (paidMatch) totalPaid = sanitizeAmount(paidMatch[1]);
+            else totalPaid = totalDue || sanitizeAmount('0');
+
+            if (!totalDue) totalDue = totalPaid;
+
+            return { centerName, dateStr, patientName, services, totalDue, totalPaid };
+        }
+
+        function buildTicketPrintHtml(data) {
+            const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const servicesHTML = data.services.length > 0
+                ? data.services.map(s => `
+                    <div class="svc-row">
+                      <span class="svc-name">${esc(s.name)}</span>
+                      <span class="svc-price">${esc(s.price)}</span>
+                    </div>`).join('')
+                : '<div class="svc-row muted"><span class="svc-name">—</span></div>';
+
+            return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Ticket</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  html, body { margin: 0; padding: 0; height: auto; overflow: visible; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    color: #000;
+    width: 72mm;
+    padding: 3mm;
+    box-sizing: border-box;
+  }
+  * { page-break-before: avoid !important; page-break-after: avoid !important; page-break-inside: avoid !important; }
+  .hdr { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+  .hdr h1 { font-size: 15px; font-weight: 900; margin: 0; text-transform: uppercase; }
+  .blk { margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px; }
+  .lbl { font-size: 9px; font-weight: bold; margin-bottom: 3px; text-transform: uppercase; }
+  .val { font-size: 13px; font-weight: bold; }
+  .svc-row { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 5px; font-size: 11px; }
+  .svc-name { flex: 1; font-weight: bold; }
+  .svc-price { white-space: nowrap; font-weight: bold; }
+  .muted { color: #555; }
+  .total-row { border-top: 1px dashed #000; padding-top: 6px; margin-top: 4px; display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; }
+  .total-row.main { border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; font-size: 12px; }
+  .total-amt { font-size: 14px; font-weight: 900; }
+</style>
+</head><body>
+  <div class="hdr"><h1>${esc(data.centerName)}</h1></div>
+  <div class="blk"><div class="lbl">Date</div><div class="val">${esc(data.dateStr)}</div></div>
+  <div class="blk"><div class="lbl">Patient</div><div class="val">${esc(data.patientName)}</div></div>
+  <div class="blk" style="border-bottom:none"><div class="lbl">Services</div>${servicesHTML}</div>
+  <div class="total-row"><span>TOTAL À PAYER</span><span class="total-amt">${esc(data.totalDue)}</span></div>
+  <div class="total-row main"><span>TOTAL PAYÉ</span><span class="total-amt">${esc(data.totalPaid)}</span></div>
+</body></html>`;
+        }
+
+        window.print = function() {
+            const printAreas = document.querySelectorAll('#print-area, #receipt-print-area, .print-area, .ticket-print, #ticket-print');
+            if (printAreas.length === 0) {
+                originalPrint.call(window);
+                return;
+            }
+
+            let area = null;
+            for (const a of printAreas) {
+                const r = a.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0 && a.innerText.trim().length > 10) {
+                    area = a;
+                    break;
+                }
+            }
+            if (!area) {
+                originalPrint.call(window);
+                return;
+            }
+
+            const data = extractTicketFromArea(area);
+            const html = buildTicketPrintHtml(data);
+            const printWin = window.open('', '_blank', 'width=420,height=640');
+
+            if (!printWin) {
+                document.body.classList.add('oclic-ticket-printing');
+                printAreas.forEach((el, i) => { el.style.display = i === 0 ? 'block' : 'none'; });
+                const bodyMatch = buildTicketPrintHtml(data).match(/<body>([\s\S]*)<\/body>/i);
+                area.innerHTML = bodyMatch ? bodyMatch[1] : '';
+                originalPrint.call(window);
+                document.body.classList.remove('oclic-ticket-printing');
+                printAreas.forEach(el => { el.style.display = ''; });
+                return;
+            }
+
+            printWin.document.open();
+            printWin.document.write(html);
+            printWin.document.close();
+            printWin.focus();
+            setTimeout(() => {
+                printWin.print();
+                setTimeout(() => printWin.close(), 600);
+            }, 300);
         };
     }
 
     function init() {
-        fixDashboard();
+        setupDashboardFetchHook();
+        setupSaleCancelUi();
+        fixDashboard(true);
         setupPrintHijack();
         setupTicketFixer();
-        setInterval(fixDashboard, 1500);
+        setInterval(() => fixDashboard(false), 2000);
+        window.addEventListener('hashchange', () => fixDashboard(true));
+        window.addEventListener('oclic:sale-cancelled', () => invalidateDashboardStats());
+        window.addEventListener('oclic:data-changed', () => invalidateDashboardStats());
     }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }

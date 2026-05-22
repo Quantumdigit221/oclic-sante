@@ -690,9 +690,26 @@ app.use('/api', (req, res, next) => {
   return resolveTenant(req, res, next);
 });
 
+const CANCELLED_SALE_STATUSES = ['CANCELLED', 'CANCELED', 'ANNULE', 'ANNULÉ', 'CANCEL'];
+
+function isCancelledSaleStatus(status) {
+  return CANCELLED_SALE_STATUSES.includes(String(status || '').trim().toUpperCase());
+}
+
+function isTodayDate(value) {
+  if (!value) return false;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear()
+    && d.getMonth() === now.getMonth()
+    && d.getDate() === now.getDate();
+}
+
 // Stats (Real DB Stats)
 app.get('/api/stats', async (req, res) => {
   try {
+    const tenantId = req.tenantId || DEFAULT_TENANT_ID;
     return sendCachedJson(req, res, 'stats', async () => {
       let patientsToday = 0;
       let revenueToday = 0;
@@ -700,27 +717,58 @@ app.get('/api/stats', async (req, res) => {
       let criticalStock = 0;
 
       if (dbConnected) {
+        const centerClause = ' AND center_id = ?';
+        const centerParams = [tenantId];
         // Requêtes stats avec try/catch individuel pour ne pas bloquer si une table est lente
         try {
-          const r = await query("SELECT COUNT(*) as count FROM tickets WHERE DATE(created_at) = CURDATE()");
+          const r = await query(
+            `SELECT COUNT(*) as count FROM tickets WHERE DATE(created_at) = CURDATE()${centerClause}`,
+            centerParams
+          );
           patientsToday = r[0]?.count || 0;
         } catch (e) { console.error('[STATS] tickets count:', e.message); }
         try {
-          const r = await query("SELECT SUM(amount) as total FROM tickets WHERE DATE(created_at) = CURDATE()");
-          revenueToday = r[0]?.total || 0;
+          const ticketRev = await query(
+            `SELECT COALESCE(SUM(amount), 0) as total FROM tickets
+             WHERE DATE(created_at) = CURDATE()${centerClause}
+             AND UPPER(COALESCE(status, '')) NOT IN ('CANCELLED','CANCELED','ANNULE','ANNULÉ','CANCEL')`,
+            centerParams
+          );
+          const salesRev = await query(
+            `SELECT COALESCE(SUM(total), 0) as total FROM sales
+             WHERE DATE(created_at) = CURDATE()${centerClause}
+             AND UPPER(COALESCE(status, '')) NOT IN ('CANCELLED','CANCELED','ANNULE','ANNULÉ','CANCEL')`,
+            centerParams
+          );
+          revenueToday = (parseFloat(ticketRev[0]?.total) || 0) + (parseFloat(salesRev[0]?.total) || 0);
         } catch (e) { console.error('[STATS] revenue:', e.message); }
         try {
-          const r = await query("SELECT COUNT(*) as count FROM tickets WHERE UPPER(status) IN ('WAITING','PENDING','EN_ATTENTE','QUEUE','QUEUED')");
+          const r = await query(
+            `SELECT COUNT(*) as count FROM tickets
+             WHERE UPPER(status) IN ('WAITING','PENDING','EN_ATTENTE','QUEUE','QUEUED')${centerClause}`,
+            centerParams
+          );
           waitingRoom = r[0]?.count || 0;
         } catch (e) { console.error('[STATS] waiting:', e.message); }
         try {
-          const r = await query("SELECT COUNT(*) as count FROM medicines WHERE stock_quantity <= min_stock_alert");
+          const r = await query(
+            `SELECT COUNT(*) as count FROM medicines
+             WHERE stock_quantity <= min_stock_alert${centerClause}`,
+            centerParams
+          );
           criticalStock = r[0]?.count || 0;
         } catch (e) { console.error('[STATS] stock:', e.message); }
       } else {
-        const store = getMemoryTenantStore(req.tenantId);
-        patientsToday = store.tickets.length;
-        revenueToday = store.tickets.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+        const store = getMemoryTenantStore(tenantId);
+        const todayTickets = store.tickets.filter((t) => isTodayDate(t.createdAt || t.created_at));
+        patientsToday = todayTickets.length;
+        const ticketRevenue = todayTickets
+          .filter((t) => normalizeTicketStatus(t.status) !== 'CANCELLED')
+          .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+        const salesRevenue = store.sales
+          .filter((s) => isTodayDate(s.createdAt || s.created_at) && !isCancelledSaleStatus(s.status))
+          .reduce((sum, s) => sum + (parseFloat(s.totalAmount || s.total) || 0), 0);
+        revenueToday = ticketRevenue + salesRevenue;
         waitingRoom = store.tickets.filter((t) => normalizeTicketStatus(t.status) === 'WAITING').length;
         criticalStock = store.medicines.filter((m) => (parseInt(m.stock_quantity || m.stock || 0, 10) <= parseInt(m.min_stock_alert || m.minStock || 10, 10))).length;
       }
@@ -2001,9 +2049,18 @@ app.post('/api/sales', async (req, res) => {
 
     if (!dbConnected) {
       const store = getMemoryTenantStore(req.tenantId);
-      upsertMemoryRecord(store.sales, { ...saleData, items, paymentMethod: b.paymentMethod, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      const created = {
+        ...saleData,
+        items,
+        paymentMethod: b.paymentMethod,
+        totalAmount,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      upsertMemoryRecord(store.sales, created);
+      invalidateTenantCache(req.tenantId);
       console.log('Mode mémoire: Vente créée:', saleId);
-      return res.json({ ...saleData, items, paymentMethod: b.paymentMethod, createdAt: new Date().toISOString() });
+      return res.json(created);
     }
 
     try {
@@ -2011,17 +2068,80 @@ app.post('/api/sales', async (req, res) => {
         `INSERT INTO sales (id, patient_name, quantity, unit_price, total, status, center_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [saleData.id, saleData.patient_name, saleData.quantity, saleData.unit_price, saleData.total, saleData.status, saleData.center_id]
       );
-      const rows = await query('SELECT * FROM sales WHERE id = ?', [saleId]);
       invalidateTenantCache(req.tenantId);
-      res.json(rows[0] || saleData);
+      const mapped = await SalesModel.findById(saleId, req.tenantId);
+      res.json(mapped ? { ...mapped, items, paymentMethod: b.paymentMethod } : { ...saleData, items, paymentMethod: b.paymentMethod, totalAmount, createdAt: new Date().toISOString() });
     } catch (sqlErr) {
       console.error('[SQL] sales POST:', sqlErr.message);
-      // En cas d'erreur SQL on retourne quand même un succès pour ne pas bloquer l'UI
-      res.json({ ...saleData, items, paymentMethod: b.paymentMethod, createdAt: new Date().toISOString() });
+      res.json({ ...saleData, items, paymentMethod: b.paymentMethod, totalAmount, createdAt: new Date().toISOString() });
     }
   } catch (error) {
     console.error('[sales POST]:', error.message);
     res.status(500).json({ error: 'Erreur serveur lors de la vente' });
+  }
+});
+
+app.patch('/api/sales/:id/cancel', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    const saleId = req.params.id;
+    if (!dbConnected) {
+      const store = getMemoryTenantStore(req.tenantId);
+      const existing = store.sales.find((s) => String(s.id) === String(saleId));
+      if (!existing) return res.status(404).json({ error: 'Vente introuvable' });
+      if (isCancelledSaleStatus(existing.status)) {
+        return res.json({ ...existing, status: 'CANCELLED' });
+      }
+      const updated = {
+        ...existing,
+        status: 'CANCELLED',
+        updatedAt: new Date().toISOString()
+      };
+      upsertMemoryRecord(store.sales, updated);
+      invalidateTenantCache(req.tenantId);
+      return res.json(updated);
+    }
+
+    const existing = await SalesModel.findById(saleId, req.tenantId);
+    if (!existing) return res.status(404).json({ error: 'Vente introuvable' });
+    if (isCancelledSaleStatus(existing.status)) {
+      return res.json(existing);
+    }
+    const updated = await SalesModel.cancel(saleId, req.tenantId);
+    invalidateTenantCache(req.tenantId);
+    res.json(updated || existing);
+  } catch (error) {
+    console.error('[sales PATCH cancel]:', error.message);
+    res.status(500).json({ error: 'Erreur lors de l\'annulation de la vente' });
+  }
+});
+
+app.patch('/api/sales/:id', authenticateToken, resolveTenant, async (req, res) => {
+  try {
+    const saleId = req.params.id;
+    const nextStatus = String(req.body?.status || '').trim().toUpperCase();
+    if (!nextStatus) return res.status(400).json({ error: 'Statut requis' });
+
+    if (!dbConnected) {
+      const store = getMemoryTenantStore(req.tenantId);
+      const existing = store.sales.find((s) => String(s.id) === String(saleId));
+      if (!existing) return res.status(404).json({ error: 'Vente introuvable' });
+      const updated = { ...existing, status: nextStatus, updatedAt: new Date().toISOString() };
+      upsertMemoryRecord(store.sales, updated);
+      invalidateTenantCache(req.tenantId);
+      return res.json(updated);
+    }
+
+    await query(
+      'UPDATE sales SET status = ? WHERE id = ? AND center_id = ?',
+      [nextStatus, saleId, req.tenantId]
+    );
+    invalidateTenantCache(req.tenantId);
+    const updated = await SalesModel.findById(saleId, req.tenantId);
+    if (!updated) return res.status(404).json({ error: 'Vente introuvable' });
+    res.json(updated);
+  } catch (error) {
+    console.error('[sales PATCH]:', error.message);
+    res.status(500).json({ error: 'Erreur mise à jour vente' });
   }
 });
 

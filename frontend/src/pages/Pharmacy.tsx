@@ -1120,46 +1120,37 @@ const PharmacyInner = () => {
               <div className="p-4 bg-slate-100 flex justify-center overflow-y-auto">
                  <div id="receipt-print-area" className="bg-white w-[302px] p-4 text-slate-900 font-mono text-xs shadow-md">
                     <div className="text-center border-b-2 border-dashed border-slate-300 pb-3 mb-3">
-                       <div className="font-bold text-sm uppercase mb-1">{currentCenter?.name}</div>
-                       <div className="text-[10px] text-slate-500">{currentCenter?.address}</div>
-                       <div className="text-[10px] text-slate-500">Tel: {currentCenter?.phone}</div>
-                    </div>
-                    
-                    <div className="mb-3">
-                       <div className="flex justify-between">
-                          <span>Date:</span>
-                          <span>{format(new Date(), 'dd/MM/yy HH:mm')}</span>
+                       <div className="font-black text-xl uppercase mb-1">{currentCenter?.name}</div>
+                       <div className="text-xs font-medium mt-1">
+                          DATE: {format(new Date(), 'dd/MM/yyyy HH:mm')}
                        </div>
-                       <div className="flex justify-between">
-                          <span>Ticket #:</span>
-                          <span>{lastSale.id.split('-').pop()}</span>
-                       </div>
-                       {lastSale.patientName && (
-                         <div className="flex justify-between font-bold border-b border-dashed border-slate-200 pb-1 mt-1">
-                            <span>Client:</span>
-                            <span className="truncate max-w-[150px]">{lastSale.patientName}</span>
-                         </div>
-                       )}
                     </div>
+
+                    {lastSale.patientName && (
+                      <div className="mb-3 border-b border-dashed border-slate-200 pb-2">
+                         <div className="text-[10px] font-bold uppercase">Patient :</div>
+                         <div className="font-bold text-sm">{lastSale.patientName}</div>
+                      </div>
+                    )}
 
                     <div className="border-b-2 border-dashed border-slate-300 pb-3 mb-3 space-y-1">
                        {lastSale.items.map((item, idx) => (
-                          <div key={`${item.medicineId}-${idx}`} className="flex justify-between">
-                             <span className="truncate w-32">{item.medicineName}</span>
-                             <span>x{item.quantity}</span>
-                             <span className="font-bold">{item.total}</span>
+                          <div key={`${item.medicineId}-${idx}`} className="flex justify-between gap-2">
+                             <span className="flex-1 truncate font-bold">{item.medicineName}</span>
+                             <span className="font-bold whitespace-nowrap">{item.total} F</span>
                           </div>
                        ))}
                     </div>
 
-                    <div className="flex justify-between text-sm font-bold border-b border-slate-900 pb-2 mb-2">
-                       <span>TOTAL</span>
-                       <span>{lastSale.totalAmount} FCFA</span>
-                    </div>
-
-                    <div className="text-center text-[10px] text-slate-400 mt-4">
-                       Merci de votre visite !<br/>
-                       Gardez ce ticket.
+                    <div className="space-y-2">
+                       <div className="flex justify-between text-xs font-bold">
+                          <span>TOTAL À PAYER :</span>
+                          <span>{lastSale.totalAmount} F</span>
+                       </div>
+                       <div className="flex justify-between text-sm font-black border-t-2 border-slate-900 pt-2">
+                          <span>MONTANT PAYÉ :</span>
+                          <span>{lastSale.totalAmount} F</span>
+                       </div>
                     </div>
                  </div>
               </div>

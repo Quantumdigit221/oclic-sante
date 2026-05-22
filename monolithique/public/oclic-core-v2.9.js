@@ -167,6 +167,8 @@
                     item.serviceCategory = item.serviceCategory || item.service_category || 'Général';
                     item.category = item.category || item.serviceCategory;
                     item.amount = item.amount || item.price || 0;
+                    item.totalAmount = parseFloat(item.totalAmount ?? item.total ?? item.unit_price ?? 0) || 0;
+                    item.total = parseFloat(item.total ?? item.totalAmount ?? item.unit_price ?? 0) || 0;
                     
                     // Ticket info
                     const idStr = String(item.id || '');

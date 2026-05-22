@@ -957,14 +957,6 @@ export const Consultations = () => {
                   </div>
                 )}
 
-                {/* Footer */}
-                <div className="flex justify-between items-end pt-12 border-t-2 border-black">
-                  <div className="text-center w-48">
-                    <p className="text-sm text-black mb-12 font-bold">Signature & Cachet</p>
-                    <div className="h-0.5 w-full bg-black"></div>
-                    <p className="text-xs text-black mt-1 font-bold">Dr. {currentUser?.name}</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

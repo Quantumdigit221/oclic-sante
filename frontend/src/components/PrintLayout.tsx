@@ -237,15 +237,6 @@ const generatePrescriptionHTML = (consultation: Consultation, ticket?: Partial<T
         </div>
       ` : ''}
       
-      <div class="footer">
-        <div class="signature-line">
-          ${consultation.doctorName || 'Médecin Traitant'}<br>
-          Médecin Traitant
-        </div>
-        <p style="font-size: 9pt; margin-top: 10px;">
-          Fait le ${consultation.createdAt ? format(new Date(consultation.createdAt), 'dd MMMM yyyy') : new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} à ${consultation.createdAt ? format(new Date(consultation.createdAt), 'HH:mm') : new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-        </p>
-      </div>
     </body>
     </html>
   `;
@@ -468,15 +459,6 @@ const generateLabOrdersHTML = (consultation: Consultation, ticket?: Partial<Tick
         </div>
       ` : ''}
       
-      <div class="footer">
-        <div class="signature-line">
-          ${consultation.doctorName || 'Médecin Prescripteur'}<br>
-          Médecin Prescripteur
-        </div>
-        <p style="font-size: 9pt; margin-top: 10px;">
-          Fait le ${consultation.createdAt ? format(new Date(consultation.createdAt), 'dd MMMM yyyy') : new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} à ${consultation.createdAt ? format(new Date(consultation.createdAt), 'HH:mm') : new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-        </p>
-      </div>
     </body>
     </html>
   `;

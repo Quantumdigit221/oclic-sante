@@ -327,10 +327,6 @@ export const Exams = () => {
                     <div>
                         ${resultData.external ? '⚠️ Prélèvement externe' : '✅ Prélèvement interne'}
                     </div>
-                    <div class="signature">
-                        <p>Biologiste / Responsable de Laboratoire</p>
-                        <div class="sig-line">Dr. ${order.result?.doctorName || ''}</div>
-                    </div>
                 </div>
             </body>
             </html>

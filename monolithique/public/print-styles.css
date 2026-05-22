@@ -2,27 +2,63 @@
 
 /* Styles généraux pour l'impression */
 @media print {
-    /* Cache tous les éléments sauf la zone d'impression */
-    body > *:not(.print-area):not(script):not(style) {
+    /* Masque tout le document sauf la zone ticket (évite 3-4 pages vides) */
+    body * {
+        visibility: hidden !important;
+    }
+
+    #print-area,
+    #print-area *,
+    #receipt-print-area,
+    #receipt-print-area *,
+    #ticket-print,
+    #ticket-print *,
+    .print-area,
+    .print-area *,
+    .ticket-print,
+    .ticket-print * {
+        visibility: visible !important;
+    }
+
+    #print-area,
+    #receipt-print-area,
+    #ticket-print,
+    .print-area,
+    .ticket-print {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        page-break-before: avoid !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Une seule zone visible si secours sans popup */
+    body.oclic-ticket-printing .print-area ~ .print-area,
+    body.oclic-ticket-printing #ticket-print ~ #ticket-print {
         display: none !important;
     }
-    
-    /* Montre seulement la zone d'impression */
-    .print-area {
-        display: block !important;
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        background: white !important;
+
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
     }
     
-    /* Configuration de la page par défaut (A4 pour ordonnances) */
+    /* Ticket thermique = 1 page courte */
     @page {
-        margin: 10mm;
-        size: A4;
+        margin: 0;
+        size: 80mm auto;
     }
 
     /* Configuration spéciale pour les TICKETs (80mm) */
@@ -221,12 +257,13 @@
     
     /* Optimisations pour les tickets */
     .ticket-print {
-        max-width: 300px !important;
-        margin: 0 auto !important;
+        max-width: 80mm !important;
+        margin: 0 !important;
         font-family: 'Courier New', monospace !important;
         font-size: 9pt !important;
         line-height: 1.2 !important;
     }
+
     
     .ticket-print-header {
         text-align: center !important;

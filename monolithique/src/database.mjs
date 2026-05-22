@@ -1130,17 +1130,54 @@ export class CenterModel {
 }
 
 export class SalesModel {
+  static _mapRow(row) {
+    if (!row) return null;
+    const status = String(row.status || 'PAID').trim().toUpperCase();
+    return {
+      ...row,
+      status,
+      totalAmount: parseFloat(row.totalAmount ?? row.total ?? row.unit_price ?? 0) || 0,
+      total: parseFloat(row.total ?? row.totalAmount ?? row.unit_price ?? 0) || 0,
+      patientName: row.patientName || row.patient_name || 'Anonyme',
+      patient_name: row.patient_name || row.patientName || 'Anonyme',
+      createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+      created_at: row.created_at || row.createdAt,
+      centerId: row.centerId || row.center_id,
+      center_id: row.center_id || row.centerId
+    };
+  }
+
   static async findAll(centerId = null) {
     try {
-      return centerId
+      const rows = centerId
         ? await query('SELECT * FROM sales WHERE center_id = ? ORDER BY created_at DESC', [centerId])
         : await query('SELECT * FROM sales ORDER BY created_at DESC');
+      return rows.map((r) => SalesModel._mapRow(r));
     } catch (e) {
-      // Fallback si la colonne created_at manque (migration)
-      return centerId
+      const rows = centerId
         ? await query('SELECT * FROM sales WHERE center_id = ? ORDER BY id DESC', [centerId])
         : await query('SELECT * FROM sales ORDER BY id DESC');
+      return rows.map((r) => SalesModel._mapRow(r));
     }
+  }
+
+  static async findById(id, centerId = null) {
+    const rows = centerId
+      ? await query('SELECT * FROM sales WHERE id = ? AND center_id = ?', [id, centerId])
+      : await query('SELECT * FROM sales WHERE id = ?', [id]);
+    return rows[0] ? SalesModel._mapRow(rows[0]) : null;
+  }
+
+  static async cancel(id, centerId = null) {
+    if (centerId) {
+      await query(
+        `UPDATE sales SET status = 'CANCELLED' WHERE id = ? AND center_id = ?`,
+        [id, centerId]
+      );
+    } else {
+      await query(`UPDATE sales SET status = 'CANCELLED' WHERE id = ?`, [id]);
+    }
+    return await SalesModel.findById(id, centerId);
   }
 }
 

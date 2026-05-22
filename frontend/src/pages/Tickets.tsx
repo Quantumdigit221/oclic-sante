@@ -789,7 +789,6 @@ export const Tickets = () => {
                 {/* Header */}
                 <div className="text-center border-b-2 border-black pb-4 mb-4">
                   <div className="font-black text-xl uppercase leading-tight text-black">{currentCenter?.name}</div>
-                  <div className="text-base font-bold text-black mt-1">TEL: {currentCenter?.phone || 'Non renseigné'}</div>
                   <div className="text-xs font-medium text-black mt-2">
                     DATE: {safeFormatDate(printTicket.createdAt, 'dd/MM/yyyy HH:mm')}
                   </div>
