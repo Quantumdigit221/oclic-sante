@@ -1,0 +1,19 @@
+/* Styles spécialisés pour l'impression PDF */
+@media print {
+    body * { visibility: hidden !important; }
+    #print-area, #print-area *, #receipt-print-area, #receipt-print-area *, #ticket-print, #ticket-print *, .print-area, .print-area *, .ticket-print, .ticket-print * {
+        visibility: visible !important;
+    }
+    #print-area, #receipt-print-area, #ticket-print, .print-area, .ticket-print {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+    @page { margin: 0; size: 80mm auto; }
+}
